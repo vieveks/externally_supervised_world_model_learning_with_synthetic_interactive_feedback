@@ -1066,45 +1066,154 @@ From your initial conversation:
 
 ---
 
-## Summary: Phase 3 Success Criteria
+## Summary: Phase 3 Success Criteria (Updated 2026-01-08)
 
-### Minimum Viable Result (Required for Paper)
-- [ ] Stage 3.1: RL matches MLE on token prediction (≥95% accuracy on deterministic grammar)
-- [ ] Stage 3.2: Agent learns grounded language commands (>70% accuracy)
-- [ ] Stage 3.3: Baby generates grammatical sentences with LLM property-based feedback
-- [ ] Credit assignment: TD(λ) improves over sequence-level REINFORCE
+### ✅ Stage 3.1a: COMPLETED - Deterministic Token Prediction
+**Status**: All experiments passed with outstanding results
 
-### Strong Result (Solid Paper)
-- [ ] Credit assignment scales to 15+ token sequences with >50% accuracy
-- [ ] Dense property feedback outperforms sparse feedback
-- [ ] Representations learned are linearly decodable (like Phase 2b)
-- [ ] Qualitative: Baby's language quality improves visibly over training
-- [ ] CCA similarity between RL and MLE representations > 0.7
+**Achievements**:
+- ✅ RL matches MLE: Both 100% accuracy on deterministic grammars
+- ✅ Credit assignment: 100% at 7-step delay (far exceeding 35% at 5-step for continuous)
+- ✅ Vanilla REINFORCE suffices for deterministic grammars
+- ✅ Discrete action spaces show superior credit assignment vs continuous
 
-### Aspirational Goals (Future Work, Not Required)
-> **Note**: These are stretch goals. Phase 3 does NOT need to achieve these to be a valid contribution. They represent directions for future research.
+**Key Insight**: The challenge is NOT credit assignment for deterministic sequences—it's stochasticity and partial observability.
 
-- [ ] Demonstrate emergent grammar/syntax beyond training distribution
-- [ ] Show compositional generalization to novel command combinations
-- [ ] Baby learns novel words from context (few-shot word learning)
-- [ ] Performance approaches pretrained baselines on simple tasks
+### ⬜ Stage 3.1b: NEXT - Stochastic Token Prediction
+**Goal**: Test whether RL handles probabilistic token transitions
+
+**Tasks**:
+- [ ] Implement bigram grammar: $P(x_{t+1}|x_t)$ with learned transition matrix
+- [ ] Test RL vs MLE on stochastic transitions
+- [ ] Measure credit assignment degradation with stochasticity
+- [ ] CCA analysis: Do RL and MLE learn similar representations?
+
+**Success Criteria**:
+- RL achieves ≥80% accuracy on stochastic grammar (MLE baseline for comparison)
+- Credit assignment maintains >70% at 5-step delay
+- CCA similarity (RL vs MLE) > 0.7
+
+**Why This Matters**: Stochasticity is the ACTUAL test—determinism was too easy. This determines if the approach extends beyond toy problems.
+
+### ⬜ Stage 3.1c: Vocabulary Scaling
+**Goal**: Show results aren't artifact of small vocab
+
+**Tasks**:
+- [ ] Scale vocabulary to 64 tokens
+- [ ] Scale vocabulary to 128 tokens
+- [ ] Test if convergence degrades with vocab size
+
+**Success Criteria**:
+- RL maintains ≥90% accuracy at 64-token vocab
+- RL maintains ≥80% accuracy at 128-token vocab
+- Sample efficiency gap remains <10× vs MLE
+
+### ⬜ Stage 3.2: Grounded Language Task
+**Goal**: Tokens cause world-state changes (language grounding)
+
+**Critical Dependency**: Must complete 3.1b (stochastic) first
+
+**Tasks**:
+- [ ] Design command→observation task (e.g., "move left" changes grid position)
+- [ ] Implement sequence generation with world grounding
+- [ ] Test RL on grounded prediction task
+
+**Success Criteria**:
+- Agent learns correct command→observation mappings (>70% accuracy)
+- Some compositional structure emerges (test on novel combinations)
+- TD(λ) helps with multi-token commands (vs vanilla REINFORCE)
+
+**Expected Difficulty**: High—this combines sequence generation + delayed reward + grounding + no teacher forcing
+
+### ⬜ Stage 3.3: Interactive LLM Parent Task
+**Goal**: Property-based feedback from LLM (not likelihood-based)
+
+**Critical Dependency**: Must complete 3.2 first
+
+**Tasks**:
+- [ ] Implement LLM verifier (judges grammaticality, consistency, fluency)
+- [ ] Test score-only feedback mode
+- [ ] Test dense per-token feedback mode
+- [ ] Compare LLM feedback vs oracle feedback
+
+**Success Criteria**:
+- Baby generates grammatical sentences (>80% LLM-judged)
+- Property-based feedback enables learning (without likelihood signals)
+- Performance approaches oracle-feedback baseline
+
+### What Phase 3.1 Results Changed
+
+**Original Concern**: Credit assignment would be a major bottleneck
+**Reality**: Credit assignment is EASY for deterministic sequences, even with 7-step delay
+
+**Original Plan**: TD(λ) would be necessary
+**Reality**: Vanilla REINFORCE suffices for deterministic grammars
+
+**Original Expectation**: Discrete tokens would be similar difficulty to continuous
+**Reality**: Discrete tokens are MUCH EASIER (100% vs 35% at comparable delays)
+
+**Updated Focus**: The real challenges are:
+1. **Stochasticity** (not determinism)
+2. **Partial observability** (not fully observable)
+3. **Compositionality** (not memorization)
+4. **Scale** (not toy problems)
+
+### Revised Timeline
+
+**Immediate (Stage 3.1b - Stochastic)**:
+- [ ] Week 1: Implement bigram grammar
+- [ ] Week 2: Run stochastic experiments
+- [ ] Week 3: CCA analysis
+- [ ] **Decision point**: If stochastic fails badly, stop here and write paper on deterministic results only
+
+**Short-term (Stage 3.1c - Scale)**:
+- [ ] Week 4-5: Vocabulary scaling experiments
+- [ ] Write Phase 3.1 paper (deterministic + stochastic + scale)
+
+**Medium-term (Stage 3.2 - Grounding)**:
+- Only if 3.1b succeeds
+- 2-3 weeks implementation + experiments
+
+**Long-term (Stage 3.3 - LLM Parent)**:
+- Only if 3.2 succeeds
+- 3-4 weeks implementation + experiments
 
 ### What Would Falsify the Hypothesis?
-The hypothesis would be falsified if:
-1. RL cannot match MLE even on Stage 3.1 (deterministic token prediction)
-2. Property-based feedback is insufficient for learning (requires likelihood signals)
-3. Credit assignment fundamentally fails beyond 5-10 tokens despite TD(λ)
 
-Even negative results here would be valuable—they would identify the true bottlenecks.
+**Already falsified**:
+- ❌ "RL fundamentally can't do credit assignment for sequences" - FALSIFIED (100% at 7-step)
+- ❌ "Discrete tokens are as hard as continuous" - FALSIFIED (discrete is much easier)
+
+**Still testable**:
+- ⚠️ "RL can handle stochastic token transitions" - PENDING (Stage 3.1b)
+- ⚠️ "Property-based feedback suffices (no likelihood needed)" - PENDING (Stage 3.3)
+- ⚠️ "Approach scales beyond toy vocabularies" - PENDING (Stage 3.1c)
+
+### Paper Strategy
+
+**Paper 1 (Already Submitted)**: Prediction-as-Action for continuous states
+- Status: Under review at TMLR
+- Do NOT touch until reviews come back
+
+**Paper 2 (Phase 3.1 - This Work)**: Extension to discrete tokens
+- Title: "From States to Tokens: Prediction-as-Action Scales to Discrete Sequential Prediction"
+- Scope: Deterministic grammars ONLY (+ stochastic if 3.1b succeeds)
+- Target: TMLR or ICLR
+- Timeline: Write after 3.1b/3.1c complete
+
+**Paper 3 (Phase 3.2/3.3 - Future)**: Grounded language + LLM parent
+- Only if 3.1b succeeds AND we proceed to 3.2/3.3
+- Much more ambitious scope
+- Target: NeurIPS or ICLR
 
 ---
 
-## Next Steps
+## Next Immediate Steps
 
-1. **Implement Stage 3.1**: Token prediction task and model
-2. **Run RL vs MLE comparison**: Validate extension from Phase 2b
-3. **Add TD(λ)**: Implement credit assignment
-4. **Build Stage 3.2**: Grounded language environment
+1. **Implement stochastic bigram grammar** (Stage 3.1b)
+2. **Run stochastic experiments** (RL vs MLE, delay ablation)
+3. **CCA analysis** (RL vs MLE representations)
+4. **Decision point**: Continue to grounding OR write paper on what we have
 5. **Integrate LLM parent**: Stage 3.3 infrastructure
 6. **Run full experiments**: Collect results for paper
 
