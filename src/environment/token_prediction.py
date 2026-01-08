@@ -60,9 +60,21 @@ class TokenPredictionTask:
             random.shuffle(self._permutation)
 
         if self.grammar_type == "bigram" and not self._bigram_probs:
-            # Create random but fixed bigram probabilities
+            # Create random but fixed bigram probabilities with controlled entropy
+            # Strategy: One dominant next token (50%), 1-2 secondary (20% each), rest noise
+            # This creates learnable structure (oracle ~50%)
             for token in range(self.vocab_size):
-                probs = [random.random() for _ in range(self.vocab_size)]
+                probs = [1.0] * self.vocab_size  # Start with small uniform base
+                # Pick dominant next token (50% probability)
+                dominant = random.randint(0, self.vocab_size - 1)
+                probs[dominant] = 50.0
+                # Pick 1-2 secondary tokens (20% each)
+                remaining = [i for i in range(self.vocab_size) if i != dominant]
+                num_secondary = random.randint(1, 2)
+                secondary = random.sample(remaining, num_secondary)
+                for idx in secondary:
+                    probs[idx] = 20.0
+                # Normalize
                 total = sum(probs)
                 self._bigram_probs[token] = [p / total for p in probs]
 
