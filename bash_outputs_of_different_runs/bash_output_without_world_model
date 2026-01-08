@@ -1,0 +1,105 @@
+Training:   0%|          | 0/2000 [00:00<?, ?it/s]
+Training:   3%|▎         | 64/2000 [00:00<00:15, 125.26it/s]
+Training:   3%|▎         | 64/2000 [00:00<00:15, 125.26it/s, success=17.19%, entropy=1.97, wm_loss=0.1840]
+Training:   6%|▋         | 128/2000 [00:00<00:09, 202.10it/s, success=17.19%, entropy=1.97, wm_loss=0.1840]
+Training:   6%|▋         | 128/2000 [00:00<00:09, 202.10it/s, success=21.88%, entropy=1.86, wm_loss=0.1807]
+Training:  10%|▉         | 192/2000 [00:00<00:06, 258.98it/s, success=21.88%, entropy=1.86, wm_loss=0.1807]
+Training:  10%|▉         | 192/2000 [00:00<00:06, 258.98it/s, success=29.69%, entropy=1.70, wm_loss=0.1959]
+Training:  13%|█▎        | 256/2000 [00:01<00:05, 292.52it/s, success=29.69%, entropy=1.70, wm_loss=0.1959]
+Training:  13%|█▎        | 256/2000 [00:01<00:05, 292.52it/s, success=29.69%, entropy=1.60, wm_loss=0.2121]
+Training:  16%|█▌        | 320/2000 [00:01<00:05, 322.37it/s, success=29.69%, entropy=1.60, wm_loss=0.2121]
+Training:  16%|█▌        | 320/2000 [00:01<00:05, 322.37it/s, success=31.25%, entropy=1.50, wm_loss=0.2031]
+Training:  19%|█▉        | 384/2000 [00:01<00:04, 337.11it/s, success=31.25%, entropy=1.50, wm_loss=0.2031]
+Training:  19%|█▉        | 384/2000 [00:01<00:04, 337.11it/s, success=37.50%, entropy=1.43, wm_loss=0.1968]
+Training:  22%|██�\ufffd       | 448/2000 [00:01<00:04, 375.83it/s, success=37.50%, entropy=1.43, wm_loss=0.1968]
+Training:  22%|██�\ufffd       | 448/2000 [00:01<00:04, 375.83it/s, success=46.88%, entropy=1.25, wm_loss=0.2102]
+Training:  26%|██▌       | 512/2000 [00:01<00:03, 413.14it/s, success=46.88%, entropy=1.25, wm_loss=0.2102]
+Training:  26%|██▌       | 512/2000 [00:01<00:03, 413.14it/s, success=42.19%, entropy=1.27, wm_loss=0.2196]
+Training:  29%|██▉       | 576/2000 [00:01<00:03, 441.27it/s, success=42.19%, entropy=1.27, wm_loss=0.2196]
+Training:  29%|██▉       | 576/2000 [00:01<00:03, 441.27it/s, success=40.62%, entropy=1.31, wm_loss=0.2145]
+Training:  32%|███�\ufffd      | 640/2000 [00:01<00:02, 465.07it/s, success=40.62%, entropy=1.31, wm_loss=0.2145]
+Training:  32%|███�\ufffd      | 640/2000 [00:01<00:02, 465.07it/s, success=46.88%, entropy=1.18, wm_loss=0.2094]
+Training:  35%|███▌      | 704/2000 [00:01<00:02, 479.58it/s, success=46.88%, entropy=1.18, wm_loss=0.2094]
+Training:  35%|███▌      | 704/2000 [00:01<00:02, 479.58it/s, success=53.12%, entropy=1.14, wm_loss=0.2154]
+Training:  38%|███▊      | 768/2000 [00:02<00:02, 492.79it/s, success=53.12%, entropy=1.14, wm_loss=0.2154]
+Training:  38%|███▊      | 768/2000 [00:02<00:02, 492.79it/s, success=42.19%, entropy=1.32, wm_loss=0.2074]
+Training:  42%|████�\ufffd     | 832/2000 [00:02<00:02, 502.11it/s, success=42.19%, entropy=1.32, wm_loss=0.2074]
+Training:  42%|████�\ufffd     | 832/2000 [00:02<00:02, 502.11it/s, success=65.62%, entropy=1.06, wm_loss=0.2234]
+Training:  45%|████�\ufffd     | 896/2000 [00:02<00:02, 507.27it/s, success=65.62%, entropy=1.06, wm_loss=0.2234]
+Training:  45%|████�\ufffd     | 896/2000 [00:02<00:02, 507.27it/s, success=50.00%, entropy=1.07, wm_loss=0.2165]
+Training:  48%|████▊     | 960/2000 [00:02<00:02, 516.10it/s, success=50.00%, entropy=1.07, wm_loss=0.2165]
+Training:  48%|████▊     | 960/2000 [00:02<00:02, 516.10it/s, success=64.06%, entropy=0.88, wm_loss=0.2258]
+Training:  51%|█████     | 1024/2000 [00:02<00:01, 522.45it/s, success=64.06%, entropy=0.88, wm_loss=0.2258]
+Training:  51%|█████     | 1024/2000 [00:02<00:01, 522.45it/s, success=60.94%, entropy=0.97, wm_loss=0.2313]
+Training:  54%|█████�\ufffd    | 1088/2000 [00:02<00:01, 525.68it/s, success=60.94%, entropy=0.97, wm_loss=0.2313]
+Training:  54%|█████�\ufffd    | 1088/2000 [00:02<00:01, 525.68it/s, success=64.06%, entropy=0.99, wm_loss=0.2299]
+Training:  58%|█████▊    | 1152/2000 [00:02<00:01, 530.59it/s, success=64.06%, entropy=0.99, wm_loss=0.2299]
+Training:  58%|█████▊    | 1152/2000 [00:02<00:01, 530.59it/s, success=62.50%, entropy=0.88, wm_loss=0.2247]
+Training:  61%|██████    | 1216/2000 [00:02<00:01, 527.91it/s, success=62.50%, entropy=0.88, wm_loss=0.2247]
+Training:  61%|██████    | 1216/2000 [00:02<00:01, 527.91it/s, success=79.69%, entropy=0.64, wm_loss=0.2066]
+Training:  64%|██████�\ufffd   | 1280/2000 [00:03<00:01, 528.21it/s, success=79.69%, entropy=0.64, wm_loss=0.2066]
+Training:  64%|██████�\ufffd   | 1280/2000 [00:03<00:01, 528.21it/s, success=76.56%, entropy=0.70, wm_loss=0.2214]
+Training:  67%|██████▋   | 1344/2000 [00:03<00:01, 529.69it/s, success=76.56%, entropy=0.70, wm_loss=0.2214]
+Training:  67%|██████▋   | 1344/2000 [00:03<00:01, 529.69it/s, success=75.00%, entropy=0.61, wm_loss=0.2382]
+Training:  70%|███████   | 1408/2000 [00:03<00:01, 531.29it/s, success=75.00%, entropy=0.61, wm_loss=0.2382]
+Training:  70%|███████   | 1408/2000 [00:03<00:01, 531.29it/s, success=75.00%, entropy=0.66, wm_loss=0.2135]
+Training:  74%|███████▎  | 1472/2000 [00:03<00:00, 531.90it/s, success=75.00%, entropy=0.66, wm_loss=0.2135]
+Training:  74%|███████▎  | 1472/2000 [00:03<00:00, 531.90it/s, success=81.25%, entropy=0.54, wm_loss=0.2089]
+Training:  77%|███████▋  | 1536/2000 [00:03<00:00, 533.38it/s, success=81.25%, entropy=0.54, wm_loss=0.2089]
+Training:  77%|███████▋  | 1536/2000 [00:03<00:00, 533.38it/s, success=87.50%, entropy=0.50, wm_loss=0.2064]
+Training:  80%|████████  | 1600/2000 [00:03<00:00, 532.04it/s, success=87.50%, entropy=0.50, wm_loss=0.2064]
+Training:  80%|████████  | 1600/2000 [00:03<00:00, 532.04it/s, success=87.50%, entropy=0.45, wm_loss=0.2128]
+Training:  83%|████████▎ | 1664/2000 [00:03<00:00, 529.78it/s, success=87.50%, entropy=0.45, wm_loss=0.2128]
+Training:  83%|████████▎ | 1664/2000 [00:03<00:00, 529.78it/s, success=81.25%, entropy=0.55, wm_loss=0.2066]
+Training:  86%|████████▋ | 1728/2000 [00:03<00:00, 532.17it/s, success=81.25%, entropy=0.55, wm_loss=0.2066]
+Training:  86%|████████▋ | 1728/2000 [00:03<00:00, 532.17it/s, success=93.75%, entropy=0.32, wm_loss=0.1916]
+Training:  90%|████████▉ | 1792/2000 [00:04<00:00, 535.13it/s, success=93.75%, entropy=0.32, wm_loss=0.1916]
+Training:  90%|████████▉ | 1792/2000 [00:04<00:00, 535.13it/s, success=93.75%, entropy=0.38, wm_loss=0.2094]
+Training:  93%|█████████▎| 1856/2000 [00:04<00:00, 537.29it/s, success=93.75%, entropy=0.38, wm_loss=0.2094]
+Training:  93%|█████████▎| 1856/2000 [00:04<00:00, 537.29it/s, success=95.31%, entropy=0.40, wm_loss=0.2063]
+Training:  96%|█████████▌| 1920/2000 [00:04<00:00, 532.33it/s, success=95.31%, entropy=0.40, wm_loss=0.2063]
+Training:  96%|█████████▌| 1920/2000 [00:04<00:00, 532.33it/s, success=87.50%, entropy=0.40, wm_loss=0.2146]
+Training:  99%|█████████▉| 1984/2000 [00:04<00:00, 527.27it/s, success=87.50%, entropy=0.40, wm_loss=0.2146]
+Training:  99%|█████████▉| 1984/2000 [00:04<00:00, 527.27it/s, success=89.06%, entropy=0.37, wm_loss=0.2326]
+Training: 2048it [00:04, 531.71it/s, success=89.06%, entropy=0.37, wm_loss=0.2326]                          
+Training: 2048it [00:04, 531.71it/s, success=90.62%, entropy=0.32, wm_loss=0.2201]
+Training: 2048it [00:04, 453.55it/s, success=90.62%, entropy=0.32, wm_loss=0.2201]
+
+Loaded config from configs\ablation_no_world_model.yaml
+
+==================================================
+WMIL MVP Configuration
+==================================================
+Task: pattern_echo
+Actions: 8
+Model: 2 layers, hidden=64
+Algorithm: reinforce
+Total steps: 2000
+Batch size: 64
+Device: cuda
+==================================================
+
+TensorBoard not available, using console logging only
+Model parameters: 116,625
+Device: cuda
+Log dir: runs\ablation_no_wm\run_1767273414
+
+==================================================
+Training Complete!
+==================================================
+Total steps: 2,048
+Total episodes: 2,048
+Best success rate: 95.31%
+Final success rate: 90.62%
+Final entropy: 0.3186
+Final world-model loss: 0.2201
+
+--------------------------------------------------
+MVP Success Criteria:
+--------------------------------------------------
+1. Success > 12.5% (random): ✓ (90.62%)
+2. Success > 50%: ✓ (90.62%)
+3. Entropy ↓: Check TensorBoard (current: 0.3186)
+4. WM Loss ↓: Check TensorBoard (current: 0.2201)
+
+✓ MVP PASSED - Ready for Phase 2!

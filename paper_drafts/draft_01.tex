@@ -1,0 +1,268 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\begin{document}
+
+\title{World-Model Interactive Learning: Can Transformers Learn Without Pretraining?}
+
+\author{\IEEEauthorblockN{Vivek [Last Name]}
+\IEEEauthorblockA{\textit{[Affiliation]} \\
+[Location] \\
+[email]}
+}
+
+\maketitle
+
+\begin{abstract}
+We investigate whether a randomly initialized transformer can acquire structured representations and goal-directed behavior purely through interaction with an LLM-powered environment, without any pretraining or token-level imitation. We propose World-Model Interactive Learning (WMIL), a framework where a ``baby'' model learns by predicting environmental consequences and receiving sparse reward signals from a ``parent'' LLM that serves as both environment dynamics and reward oracle. Unlike distillation or RLHF, WMIL explicitly avoids any KL divergence to the parent's output distribution. Our minimal experiments on symbolic tasks demonstrate [RESULTS PENDING]. This work contributes to understanding how structured cognition might emerge from interaction rather than static data exposure.
+\end{abstract}
+
+\begin{IEEEkeywords}
+world models, reinforcement learning, emergent behavior, interactive learning, transformers
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Modern large language models (LLMs) acquire their capabilities through pretraining on massive text corpora. This process, while effective, raises fundamental questions about the nature of learning: Is static data exposure necessary for structured cognition to emerge? Could an agent learn language and reasoning through interaction alone?
+
+We explore a radical alternative: training a randomly initialized transformer through pure interaction with an environment, where that environment is itself powered by a pretrained LLM. We call this framework \textbf{World-Model Interactive Learning (WMIL)}.
+
+\textbf{What WMIL is not:}
+\begin{itemize}
+    \item \textbf{Not distillation}: We do not minimize $D_{KL}(P_{parent} \| P_{baby})$. The baby never sees the parent's token distribution.
+    \item \textbf{Not RLHF}: We do not fine-tune a pretrained model. The baby starts from random initialization.
+    \item \textbf{Not imitation learning}: The baby receives consequences, not demonstrations.
+\end{itemize}
+
+\textbf{What WMIL is:} Self-supervised world-model learning with synthetic interactive feedback. The baby learns by:
+\begin{enumerate}
+    \item Predicting environmental consequences (world-model learning)
+    \item Receiving sparse scalar feedback on goal progress
+    \item Developing internal representations that support both prediction and action
+\end{enumerate}
+
+\textbf{Epistemic honesty:} We acknowledge that we are not eliminating pretraining---we are externalizing it into the environment. The parent LLM contains the knowledge; the baby learns to extract it through interaction rather than static data. This is still meaningful: it tests whether \textit{the format} of learning (interactive vs. passive) affects what representations emerge.
+
+\section{Related Work}
+
+\subsection{World Models}
+Ha and Schmidhuber's World Models \cite{ha2018world} demonstrated that agents can learn compressed spatial and temporal representations of their environment. Our work extends this to symbolic/linguistic domains where the ``physics'' is determined by an LLM.
+
+\subsection{Curiosity-Driven Learning}
+Pathak et al. \cite{pathak2017curiosity} showed that prediction error can serve as intrinsic motivation. WMIL uses a similar signal but operates in a structured symbolic space rather than pixel space.
+
+\subsection{Self-Play and Synthetic Data}
+Recent work on self-play \cite{silver2017mastering} and synthetic data generation has shown that models can improve through interaction with themselves or synthetic environments. WMIL differs by starting from \textit{random initialization}, not fine-tuning.
+
+\section{Method}
+
+\subsection{Problem Formulation}
+
+We formulate WMIL as a partially observable Markov decision process (POMDP) where:
+\begin{itemize}
+    \item $\mathcal{S}$: State space (structured symbolic objects)
+    \item $\mathcal{A}$: Action space (discrete symbols, \textbf{not} English tokens)
+    \item $E_\phi$: Environment dynamics provided by frozen parent LLM
+    \item $\pi_\theta$: Baby's policy (randomly initialized transformer)
+    \item $f_\theta$: Baby's world model (predicts next state)
+\end{itemize}
+
+The objective is:
+\begin{equation}
+\max_\theta \mathbb{E}_{\pi_\theta, E_\phi}\left[\sum_{t=0}^{T} \gamma^t \mathbf{r}_t\right]
+\end{equation}
+where $\mathbf{r}_t$ is a vector-valued reward signal.
+
+\subsection{Architecture}
+
+The baby model consists of:
+\begin{enumerate}
+    \item \textbf{Observation Encoder}: Maps discrete state $s_t$ to continuous embedding $h_t$
+    \item \textbf{Transformer Core}: Shared backbone (2-4 layers)
+    \item \textbf{Action Head}: $\pi(a|h_t)$ outputs distribution over discrete symbols
+    \item \textbf{World Model Head}: $\hat{s}_{t+1} = f(h_t, a_t)$ predicts next state embedding
+    \item \textbf{Value Head}: $V(h_t)$ estimates expected return
+\end{enumerate}
+
+\subsection{Reward Structure}
+
+We use vector-valued rewards to preserve signal clarity:
+\begin{equation}
+\mathbf{r}_t = [r_t^{pred}, r_t^{goal}, r_t^{cons}]
+\end{equation}
+
+\begin{table}[htbp]
+\caption{Reward Components}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Component} & \textbf{Formula} & \textbf{Purpose} \\
+\midrule
+Predictability & $-\|s_{t+1} - \hat{s}_{t+1}\|^2$ & World model \\
+Goal Progress & $\text{LLM}_{judge}(s, a, task)$ & Task success \\
+Consistency & $\text{LLM}_{judge}(a | s)$ & Coherence \\
+\bottomrule
+\end{tabular}
+\label{tab:rewards}
+\end{center}
+\end{table}
+
+\subsection{Training Algorithm}
+
+\begin{algorithm}
+\caption{WMIL Training Loop}
+\begin{algorithmic}[1]
+\STATE Initialize $\theta$ randomly
+\STATE $c \leftarrow 0$ \COMMENT{Curriculum level}
+\FOR{episode $= 1$ to $E$}
+    \STATE $s_0 \leftarrow E_\phi.\text{reset}(c)$
+    \FOR{$t = 0$ to $T$}
+        \STATE $h_t \leftarrow \text{encode}(s_t)$
+        \STATE $a_t \sim \pi_\theta(h_t)$
+        \STATE $\hat{s}_{t+1} \leftarrow f_\theta(h_t, a_t)$
+        \STATE $s_{t+1}, \mathbf{r}_t \leftarrow E_\phi.\text{step}(s_t, a_t)$
+        \STATE $r^{pred}_t \leftarrow -\|s_{t+1} - \hat{s}_{t+1}\|^2$
+        \STATE Store $(s_t, a_t, \mathbf{r}_t, r^{pred}_t, s_{t+1})$
+    \ENDFOR
+    \STATE Update $\theta$ with PPO + world-model loss
+    \IF{mastery$(c) >$ threshold}
+        \STATE $c \leftarrow c + 1$
+    \ENDIF
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Loss Function}
+
+The total loss combines policy gradient and world-model objectives:
+\begin{equation}
+\mathcal{L} = \mathcal{L}_{RL} + \lambda_1 \mathcal{L}_{WM} + \lambda_2 \mathcal{L}_{ent}
+\end{equation}
+where:
+\begin{itemize}
+    \item $\mathcal{L}_{RL}$: PPO clipped surrogate objective
+    \item $\mathcal{L}_{WM} = \|s_{t+1} - \hat{s}_{t+1}\|^2$: World-model prediction error
+    \item $\mathcal{L}_{ent}$: Entropy bonus for exploration
+\end{itemize}
+
+\section{Experimental Setup}
+
+\subsection{Environment: Symbolic Tasks}
+
+We design a minimal symbolic environment to isolate the core research question:
+
+\textbf{State Space}: Structured objects with discrete attributes (shape, color, position, relations).
+
+\textbf{Action Space}: 16-32 discrete symbols (arbitrary, not English).
+
+\textbf{Tasks}:
+\begin{enumerate}
+    \item \textbf{Pattern Matching}: Output symbol matching state pattern
+    \item \textbf{Sequence Prediction}: Predict next element in sequence
+    \item \textbf{Conditional Response}: Different actions based on state properties
+\end{enumerate}
+
+\subsection{Model Configuration}
+
+\begin{table}[htbp]
+\caption{Baby Model Hyperparameters}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Layers & 2-4 \\
+Hidden dimension & 128-256 \\
+Attention heads & 4 \\
+Action vocabulary & 16-32 \\
+Learning rate & 3e-4 \\
+PPO clip & 0.2 \\
+World-model weight $\lambda_1$ & 1.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsection{Baselines}
+
+\begin{enumerate}
+    \item \textbf{Random}: Random policy (lower bound)
+    \item \textbf{RL-only}: No world-model head (ablation)
+    \item \textbf{KL-distill}: Minimize KL to parent (to show difference)
+\end{enumerate}
+
+\section{Results}
+
+\textit{[RESULTS PENDING - To be filled after experiments]}
+
+\subsection{Main Results}
+
+Does the baby model learn non-random behavior?
+
+\subsection{World Model Quality}
+
+Does prediction accuracy improve over training?
+
+\subsection{Representation Analysis}
+
+What structure emerges in the latent space?
+
+\subsection{Ablations}
+
+\begin{itemize}
+    \item Effect of world-model head
+    \item Effect of predictability reward
+    \item Effect of architecture size
+\end{itemize}
+
+\section{Discussion}
+
+\subsection{What This Work Shows}
+
+If successful, WMIL demonstrates that:
+\begin{itemize}
+    \item Structured behavior can emerge from interaction alone
+    \item World-model learning provides dense self-supervision
+    \item Token-level imitation is not necessary for task learning
+\end{itemize}
+
+\subsection{What This Work Does NOT Show}
+
+\begin{itemize}
+    \item That pretraining is unnecessary (we externalized it)
+    \item That this scales to natural language
+    \item That this is more efficient than pretraining
+\end{itemize}
+
+\subsection{Limitations}
+
+\begin{itemize}
+    \item Parent LLM encodes human knowledge; baby extracts it
+    \item Symbolic tasks are far from natural language
+    \item Compute requirements for longer training unclear
+\end{itemize}
+
+\section{Conclusion}
+
+We introduced WMIL, a framework for training transformers through interaction rather than static data. Our preliminary results on symbolic tasks suggest [CONCLUSION PENDING]. This work opens questions about the minimal conditions for structured cognition to emerge.
+
+\section*{Acknowledgment}
+[To be added]
+
+\begin{thebibliography}{00}
+\bibitem{ha2018world} D. Ha and J. Schmidhuber, ``World Models,'' arXiv preprint arXiv:1803.10122, 2018.
+\bibitem{pathak2017curiosity} D. Pathak, P. Agrawal, A. A. Efros, and T. Darrell, ``Curiosity-driven exploration by self-supervised prediction,'' in ICML, 2017.
+\bibitem{silver2017mastering} D. Silver et al., ``Mastering the game of Go without human knowledge,'' Nature, vol. 550, pp. 354--359, 2017.
+\bibitem{schulman2017ppo} J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, ``Proximal policy optimization algorithms,'' arXiv preprint arXiv:1707.06347, 2017.
+\end{thebibliography}
+
+\end{document}

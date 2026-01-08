@@ -1,0 +1,43 @@
+# Navigation Task with Model-Based Value Expansion (MVE)
+# This tests whether QUERYING the WM for value estimation helps planning
+#
+# Key insight: Auxiliary WM loss makes WM "causally inert"
+# MVE makes WM "causally relevant" - value targets depend on WM predictions
+
+# Task settings
+task: navigation
+num_actions: 8
+max_episode_length: 3
+
+# State dimension: position(8) + target(8) + phase(3) = 19
+state_dim: 19
+
+# Model architecture
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ff_dim: 128
+dropout: 0.0
+
+# Training
+total_steps: 20000
+batch_size: 64
+lr: 0.001
+baseline_decay: 0.99
+
+# World-model settings
+world_model_coef: 1.0  # Still train WM
+entropy_coef: 0.01
+
+# MVE settings - THE KEY CHANGE
+# H=1: V_target = r + gamma * V(s_predicted)
+mve_horizon: 1
+gamma: 0.99
+
+# Logging
+log_interval: 64
+save_interval: 5000
+log_dir: runs/navigation_mve
+
+# Device
+device: cpu

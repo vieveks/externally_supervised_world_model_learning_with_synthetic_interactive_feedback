@@ -1,0 +1,102 @@
+======================================================================
+ABLATION 1: DELAYED REWARD
+======================================================================
+Testing whether RL converges with delayed prediction feedback.
+Hypothesis: RL still works but requires more steps.
+
+
+============================================================
+Testing delay = 1 steps
+============================================================
+DelayedPredictionTrainer initialized:
+  Sequence length (delay): 1
+  Dynamics: circular_shift
+  Device: cuda
+
+Training with delayed reward (sequence_length=1)...
+------------------------------------------------------------
+Step   4000 | Loss: -3.0573 | Reward: -0.8943 | MSE: 0.8943 | Acc: 37.50% | Eval Acc: 37.00%
+Step   8000 | Loss: 0.2484 | Reward: -1.0190 | MSE: 1.0190 | Acc: 21.88% | Eval Acc: 88.00%
+Step  12000 | Loss: 0.3724 | Reward: -0.6416 | MSE: 0.6416 | Acc: 28.12% | Eval Acc: 100.00%
+
+============================================================
+FINAL RESULTS (Delayed Reward)
+============================================================
+Sequence Length (Delay): 1
+Final MSE: 0.0205
+Final Accuracy: 100.00%
+Best Accuracy: 100.00%
+
+============================================================
+Testing delay = 2 steps
+============================================================
+DelayedPredictionTrainer initialized:
+  Sequence length (delay): 2
+  Dynamics: circular_shift
+  Device: cuda
+
+Training with delayed reward (sequence_length=2)...
+------------------------------------------------------------
+Step   8000 | Loss: -3.8690 | Reward: -0.9401 | MSE: 0.9401 | Acc: 14.06% | Eval Acc: 55.00%
+
+============================================================
+FINAL RESULTS (Delayed Reward)
+============================================================
+Sequence Length (Delay): 2
+Final MSE: 0.0404
+Final Accuracy: 87.00%
+Best Accuracy: 55.00%
+
+============================================================
+Testing delay = 3 steps
+============================================================
+DelayedPredictionTrainer initialized:
+  Sequence length (delay): 3
+  Dynamics: circular_shift
+  Device: cuda
+
+Training with delayed reward (sequence_length=3)...
+------------------------------------------------------------
+Step  12000 | Loss: -2.8428 | Reward: -0.9939 | MSE: 0.9939 | Acc: 10.42% | Eval Acc: 64.33%
+
+============================================================
+FINAL RESULTS (Delayed Reward)
+============================================================
+Sequence Length (Delay): 3
+Final MSE: 0.0712
+Final Accuracy: 75.67%
+Best Accuracy: 64.33%
+
+============================================================
+Testing delay = 5 steps
+============================================================
+DelayedPredictionTrainer initialized:
+  Sequence length (delay): 5
+  Dynamics: circular_shift
+  Device: cuda
+
+Training with delayed reward (sequence_length=5)...
+------------------------------------------------------------
+Step   4000 | Loss: -9.8258 | Reward: -1.2050 | MSE: 1.2050 | Acc: 12.50% | Eval Acc: 11.20%
+Step   8000 | Loss: -8.2894 | Reward: -1.1497 | MSE: 1.1497 | Acc: 15.00% | Eval Acc: 25.60%
+Step  12000 | Loss: -5.2068 | Reward: -1.0710 | MSE: 1.0710 | Acc: 11.88% | Eval Acc: 23.80%
+Step  16000 | Loss: -4.0690 | Reward: -0.9964 | MSE: 0.9964 | Acc: 17.50% | Eval Acc: 25.00%
+Step  20000 | Loss: -2.0259 | Reward: -1.0669 | MSE: 1.0669 | Acc: 13.12% | Eval Acc: 38.20%
+
+============================================================
+FINAL RESULTS (Delayed Reward)
+============================================================
+Sequence Length (Delay): 5
+Final MSE: 0.1092
+Final Accuracy: 34.70%
+Best Accuracy: 38.20%
+
+======================================================================
+DELAYED REWARD ABLATION SUMMARY
+======================================================================
+Delay      Final Acc       Best Acc        Final MSE      
+-------------------------------------------------------
+1          100.00%          100.00%          0.0205
+2          87.00%          55.00%          0.0404
+3          75.67%          64.33%          0.0712
+5          34.70%          38.20%          0.1092

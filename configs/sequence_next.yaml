@@ -1,0 +1,41 @@
+# WMIL SequenceNext Task Configuration
+# Phase 2: Multi-step sequence prediction
+
+# Task
+task: sequence_next
+num_actions: 8
+sequence_length: 4  # Repeating pattern length
+
+# Model (same as PatternEcho for comparison)
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ff_dim: 256
+dropout: 0.0
+
+# State
+state_dim: 8
+
+# Training
+algorithm: reinforce
+lr: 1e-3
+baseline_decay: 0.99
+entropy_coef: 0.01
+world_model_coef: 1.0
+
+# Environment
+parent: deterministic
+max_episode_length: 1  # Still single-step per episode, but sequence persists
+
+# Rollout
+batch_size: 64
+total_steps: 5000  # May need more steps for harder task
+log_interval: 100
+save_interval: 1000
+
+# Paths
+experiment_dir: experiments
+log_dir: runs/sequence_next
+
+# Device
+device: auto

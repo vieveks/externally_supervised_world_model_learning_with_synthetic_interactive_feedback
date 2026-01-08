@@ -1,0 +1,33 @@
+# Phase 2b: Prediction-as-Action with MLE (baseline)
+# Same task, but trained with direct MSE loss instead of RL
+# This is the "pretraining" baseline for comparison
+
+# Task settings
+num_positions: 8
+dynamics_type: circular_shift  # or: random_fixed, identity
+reward_type: negative_mse      # Not used in MLE mode, but kept for consistency
+threshold: 0.1
+
+# Model settings
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ff_dim: 256
+
+# Training settings
+training_mode: mle  # Direct MSE supervision (pretraining-style)
+lr: 0.001
+total_steps: 10000
+batch_size: 32
+eval_interval: 500
+log_interval: 100
+
+# RL-specific (not used in MLE but kept for config compatibility)
+entropy_coef: 0.01
+baseline_decay: 0.99
+
+# Device
+device: cuda
+
+# Seed
+seed: 42

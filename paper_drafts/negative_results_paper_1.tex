@@ -1,0 +1,378 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\begin{document}
+
+\title{World Models Without Pretraining:\\Learning is Not Using}
+
+\author{\IEEEauthorblockN{Vivek Prashant Padman}
+\IEEEauthorblockA{\textit{DayDreamersAI} \\
+[Pune] \\
+[vivekp.padman@gmail.com]}
+}
+
+\maketitle
+
+\begin{abstract}
+We investigate whether world models learned purely through interaction---without pretraining---can enable planning in reinforcement learning agents. Through systematic experiments on symbolic tasks of increasing complexity, we find a surprising negative result: \textbf{world models trained as auxiliary prediction losses do not improve policy performance on planning-requiring tasks, and can actively degrade it}. On a navigation task requiring two-step lookahead, removing the world-model loss entirely yields 50\% success compared to 23\% with joint training. Even freezing the world model after pretraining (to eliminate gradient interference) only recovers 44\%. Our analysis reveals that world models learned through auxiliary losses are ``causally inert''---they predict dynamics accurately but are never queried during decision-making. This establishes a critical boundary: \textit{learning} accurate world models from interaction is possible, but \textit{using} them for planning requires explicit architectural mechanisms. We release our code and experimental framework to support future research on this fundamental challenge.
+\end{abstract}
+
+\begin{IEEEkeywords}
+world models, reinforcement learning, model-based RL, planning, negative results
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+The promise of world models in reinforcement learning is compelling: by learning to predict environmental dynamics, agents should be able to plan ahead, reason about consequences, and solve tasks requiring multi-step reasoning. This intuition underlies much of model-based RL research, from early work on Dyna \cite{sutton1991dyna} to modern approaches like Dreamer \cite{hafner2020dreamer}.
+
+We investigate a fundamental question: \textbf{Can world models learned purely through interaction enable planning, even without any pretraining?}
+
+This question is motivated by observations of biological learning. Human infants develop sophisticated world models through interaction with their environment, long before formal instruction. If world-model learning is a general mechanism for acquiring structured knowledge, it should work from random initialization.
+
+Our experimental framework, World-Model Interactive Learning (WMIL), trains a randomly initialized transformer through interaction with a symbolic environment. The model learns a world-model head (predicting next states) alongside a policy head (selecting actions), with both sharing a common representation backbone.
+
+\subsection{Summary of Findings}
+
+Our experiments yield a clear negative result:
+
+\begin{enumerate}
+    \item \textbf{World models emerge}: The prediction head learns accurate dynamics (MSE $\downarrow$ from 0.26 to 0.05).
+    \item \textbf{But planning does not}: Performance on planning-requiring tasks is \textit{worse} with the world-model loss than without.
+    \item \textbf{Gradient interference is real}: Two-phase training (freeze WM, then train policy) partially recovers performance.
+    \item \textbf{But not enough}: Even frozen world models don't help---the policy never learns to \textit{use} them.
+\end{enumerate}
+
+Our core contribution is establishing a precise boundary:
+
+\begin{quote}
+\textit{World models learned from interaction can predict dynamics accurately, but are causally inert for policy learning unless explicitly queried during decision-making.}
+\end{quote}
+
+This is not a failure of our specific implementation. It is a fundamental property of auxiliary-loss training that has been implicitly assumed away in much prior work.
+
+\section{Related Work}
+
+\subsection{World Models in RL}
+
+The concept of learning world models for planning has a rich history in reinforcement learning. Sutton's Dyna architecture \cite{sutton1991dyna} pioneered the idea of using learned models to generate simulated experience for policy improvement. Ha and Schmidhuber \cite{ha2018world} demonstrated world-model learning in visual RL domains, using variational autoencoders to learn compressed spatial representations and recurrent networks to model temporal dynamics.
+
+More recently, Dreamer \cite{hafner2020dreamer} and its successors \cite{hafner2021dreamerv2, hafner2023dreamerv3} have achieved strong results by training policies entirely within a learned latent world model. MuZero \cite{schrittwieser2020muzero} combines learned models with Monte Carlo tree search, achieving superhuman performance without access to environment dynamics. Crucially, these approaches \textit{actively use} the world model during policy training or action selection---the model is not merely an auxiliary objective but a core computational component.
+
+Our work isolates the question: what happens when the world model is learned but \textit{not} used for imagination or planning?
+
+\subsection{Auxiliary Losses in Deep RL}
+
+Using prediction as an auxiliary task to improve representations has been explored extensively. UNREAL \cite{jaderberg2017unreal} added reward prediction and pixel control as auxiliary objectives. Shelhamer et al. \cite{shelhamer2016loss} showed that self-supervised losses can provide useful gradients for policy learning. Burda et al. \cite{burda2019exploration} used prediction error as intrinsic motivation for exploration.
+
+The typical claim is that auxiliary prediction provides ``representation learning'' that helps downstream policy learning \cite{laskin2020curl, schwarzer2021dataefficient}. However, the mechanism by which this helps---and whether it enables planning specifically---is often left implicit. Our results challenge this assumption for tasks that structurally require multi-step reasoning.
+
+\subsection{Model-Based vs Model-Free RL}
+
+The model-based RL literature often conflates two distinct properties \cite{moerland2023modelbased}:
+\begin{enumerate}
+    \item \textbf{Learning dynamics}: Can the agent predict state transitions?
+    \item \textbf{Using dynamics for planning}: Does the agent query predictions during action selection?
+\end{enumerate}
+
+Theoretical work by Jiang et al. \cite{jiang2015dependence} and empirical studies by van Hasselt et al. \cite{vanhasselt2019use} have shown that model learning does not always translate to improved planning. Our experiments provide controlled evidence isolating these properties and demonstrating that accurate dynamics learning does not imply planning capability.
+
+\subsection{Representation Learning and Multi-Task Learning}
+
+Our findings connect to broader work on multi-task learning and gradient interference. Parisotto et al. \cite{parisotto2016actormimic} showed that multi-task training can lead to conflicting gradients. Yu et al. \cite{yu2020gradient} analyzed gradient conflicts in multi-task settings. Our two-phase training experiment directly tests whether gradient interference explains our negative results, finding that it is a contributing but not sufficient factor.
+
+\section{Method}
+
+\subsection{Environment Design}
+
+We design a progression of symbolic tasks to identify when world models become necessary:
+
+\textbf{PatternEcho}: Single-step task where the correct action equals the state. No planning required.
+
+\textbf{SequenceNext}: Predict the next element in a learned sequence. Requires memory but not multi-step planning.
+
+\textbf{DelayedMatch (T=2)}: Two-step episode where reward depends on matching a target shown at step 0.
+
+\textbf{NavigationTask (T=3)}: The key experimental task. The agent must:
+\begin{itemize}
+    \item Start at a random position on a circular grid (8 positions)
+    \item Navigate to a target position shown in the state
+    \item Use \textit{relative} movement (action $a$ causes movement of $a - 3$)
+    \item Execute 2 actions before receiving reward at step 3
+\end{itemize}
+
+This task structurally requires planning: the optimal action depends on computing a multi-step path from current position to target.
+
+\subsection{State Encoding}
+
+NavigationTask uses a 19-dimensional state:
+\begin{equation}
+s = [\text{position}_{one-hot}(8), \text{target}_{one-hot}(8), \text{phase}_{one-hot}(3)]
+\end{equation}
+
+\subsection{Model Architecture}
+
+A shared transformer backbone \cite{vaswani2017attention} (2 layers, 64 hidden dim, 4 heads) feeds three heads:
+\begin{itemize}
+    \item \textbf{Policy head}: Outputs action distribution $\pi(a|s)$
+    \item \textbf{Value head}: Estimates expected return $V(s)$
+    \item \textbf{World-model head}: Predicts next state $\hat{s}_{t+1} = f(s_t, a_t)$
+\end{itemize}
+
+\subsection{Training Objective}
+
+The joint loss is:
+\begin{equation}
+\mathcal{L} = \mathcal{L}_{policy} - \lambda_{ent} H(\pi) + \lambda_{WM} \|\hat{s}_{t+1} - s_{t+1}\|^2
+\end{equation}
+
+where $\mathcal{L}_{policy}$ is the REINFORCE policy gradient \cite{williams1992reinforce} with learned baseline.
+
+\subsection{Training Modes}
+
+We compare three training configurations:
+
+\textbf{No WM} ($\lambda_{WM} = 0$): Pure policy learning, no world-model gradient.
+
+\textbf{Joint WM} ($\lambda_{WM} = 1.0$): Standard joint training of policy and world model.
+
+\textbf{Frozen WM}: Two-phase training:
+\begin{enumerate}
+    \item Phase 1: Train world model only for 5,000 steps
+    \item Phase 2: Freeze world model, train policy only for 20,000 steps
+\end{enumerate}
+
+This isolates gradient interference from representation sharing.
+
+\section{Experimental Results}
+
+\subsection{Preliminary Tasks: World Model Irrelevant}
+
+On simpler tasks, the world model has minimal impact:
+
+\begin{table}[htbp]
+\caption{Results on Simple Tasks (10,000 steps)}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Task} & \textbf{With WM} & \textbf{Without WM} & \textbf{Random} \\
+\midrule
+PatternEcho & 95\% & 96\% & 12.5\% \\
+SequenceNext & 93\% & 95\% & 12.5\% \\
+DelayedMatch (T=2) & 98\% & 97\% & 12.5\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+These tasks are \textit{Markov lookup problems}: the optimal action is a direct function of the current state, with no planning required. The world model is irrelevant.
+
+\subsection{NavigationTask: World Model Actively Harmful}
+
+The NavigationTask (T=3) requires genuine planning. Results are striking:
+
+\begin{table}[htbp]
+\caption{NavigationTask Results (20,000 steps)}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Success} & \textbf{Best} & \textbf{Entropy} & \textbf{WM Loss} \\
+\midrule
+\textbf{No WM} & \textbf{50.0\%} & \textbf{59.4\%} & 0.81 & 0.24 \\
+Frozen WM & 43.8\% & 43.8\% & 0.92 & 0.15 \\
+Joint WM & 23.4\% & 25.0\% & 1.58 & 0.05 \\
+\midrule
+Random & 12.5\% & -- & 2.08 & -- \\
+Optimal & 100\% & -- & 0.00 & -- \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+Key observations:
+
+\begin{enumerate}
+    \item \textbf{No WM wins}: Removing world-model loss entirely yields the best performance (50\% vs 23\%).
+
+    \item \textbf{World model learns accurately}: Joint WM achieves low prediction error (0.05), but this doesn't help the policy.
+
+    \item \textbf{Entropy reveals the mechanism}: With WM, entropy remains high (1.58)---the policy never commits. Without WM, entropy drops (0.81)---the policy becomes decisive.
+
+    \item \textbf{Gradient interference is real but not the whole story}: Frozen WM (43.8\%) beats Joint WM (23.4\%), confirming gradient competition. But Frozen WM still loses to No WM (50\%).
+\end{enumerate}
+
+\subsection{Analysis: Why World Models Hurt}
+
+\subsubsection{Gradient Competition}
+
+The world-model loss optimizes for prediction accuracy, which may require different representations than optimal control. When trained jointly, the shared backbone compromises between objectives.
+
+Evidence: Frozen WM (no gradient competition) recovers from 23\% to 44\%.
+
+\subsubsection{Representation Multitasking vs Planning}
+
+Even with frozen weights, the world-model-trained representations don't help the policy. This reveals a deeper issue: the policy \textit{never queries} the world model during decision-making.
+
+The architecture looks like this:
+\begin{verbatim}
+shared_backbone
+├── policy_head (trained by reward)
+├── value_head
+└── world_model_head (trained by MSE)
+\end{verbatim}
+
+The world model is a \textit{side effect} of training, not a \textit{tool} for planning. It predicts dynamics but those predictions don't influence action selection.
+
+\subsubsection{The ``Causally Inert'' World Model}
+
+We can formalize this: let $P(a|s; WM)$ denote the policy's dependence on the world model. In our architecture:
+\begin{equation}
+P(a|s; WM) = P(a|s)
+\end{equation}
+
+The world model has zero causal influence on action selection. It is learned but never used.
+
+\section{Discussion}
+
+\subsection{What We Have Shown}
+
+\begin{enumerate}
+    \item \textbf{World models can emerge from interaction}: Without pretraining, a randomly initialized network learns to predict state transitions accurately.
+
+    \item \textbf{Accurate prediction $\neq$ planning}: The world model achieves low MSE but this doesn't translate to better task performance.
+
+    \item \textbf{Auxiliary losses can hurt}: On planning-requiring tasks, the world-model gradient actively degrades policy learning.
+
+    \item \textbf{Freezing helps but isn't enough}: Removing gradient interference recovers some performance but doesn't unlock planning.
+\end{enumerate}
+
+\subsection{What This Implies for Model-Based RL}
+
+Our results suggest that the benefits often attributed to ``world-model learning'' may actually come from \textbf{how the model is used}, not just that it exists:
+
+\begin{itemize}
+    \item \textbf{Dreamer} \cite{hafner2020dreamer, hafner2021dreamerv2, hafner2023dreamerv3} works because it trains the policy on \textit{imagined} trajectories---the policy queries the world model explicitly.
+
+    \item \textbf{MuZero} \cite{schrittwieser2020muzero} works because it uses the model for \textit{search}---action selection directly involves model predictions.
+
+    \item \textbf{Auxiliary prediction losses} \cite{jaderberg2017unreal, shelhamer2016loss} may help representation learning on some tasks, but this is incidental, not causal.
+\end{itemize}
+
+\subsection{Implications for ``No Pretraining'' Research}
+
+This work began with the question: can structured cognition emerge from interaction without pretraining? Our results provide a partial answer:
+
+\begin{quote}
+\textit{Structure (world models) can emerge. But intelligence (planning) requires mechanisms that \textbf{use} that structure.}
+\end{quote}
+
+This parallels observations in cognitive science: infants don't just learn world models---they \textit{use} them for prediction, anticipation, and action selection \cite{gopnik1999scientist, baillargeon2004infants}. The using is not automatic; it requires appropriate computational architecture.
+
+\subsection{Limitations}
+
+\begin{enumerate}
+    \item \textbf{Synthetic tasks}: Our tasks are designed to isolate planning. Real-world visual or language tasks may have different properties where auxiliary prediction provides more benefit.
+
+    \item \textbf{Simple architecture}: We use a minimal 2-layer transformer. Larger models with more capacity might learn to implicitly use world-model representations, though this would require further investigation.
+
+    \item \textbf{REINFORCE only}: PPO \cite{schulman2017ppo} or other algorithms with different gradient dynamics might show different patterns of interference. However, our two-phase experiment suggests that even eliminating gradient interference does not unlock planning.
+
+    \item \textbf{Single random seed}: Due to computational constraints, we report single-run results. Variance across seeds should be characterized in follow-up work.
+\end{enumerate}
+
+\subsection{Future Directions}
+
+Based on our findings, productive next steps include:
+
+\begin{enumerate}
+    \item \textbf{Explicit world-model usage}: Add mechanisms that query the world model during action selection (e.g., one-step imagination, value expansion \cite{feinberg2018modelbasedvalue}).
+
+    \item \textbf{Planning-in-imagination}: Train the policy on world-model rollouts, not just real experience, following the Dreamer paradigm \cite{hafner2020dreamer}.
+
+    \item \textbf{Learned planning procedures}: Allow the agent to learn when and how to use its world model, potentially through meta-learning or attention over imagined futures.
+
+    \item \textbf{Scaling analysis}: Test whether larger models or longer training can overcome the ``causally inert'' problem, or whether explicit usage mechanisms are fundamentally required.
+\end{enumerate}
+
+The key insight is that these mechanisms must make the world model \textbf{causally relevant} to action selection.
+
+\section{Conclusion}
+
+We investigated whether world models learned through interaction---without pretraining---can enable planning. Our systematic experiments reveal a clear negative result: world models trained as auxiliary losses do not improve policy performance on planning-requiring tasks, and can actively degrade it.
+
+This negative result is scientifically valuable. It establishes a precise boundary between \textit{learning} dynamics and \textit{using} them for planning. It explains why some model-based RL approaches work (they explicitly use the model) while auxiliary prediction often provides minimal benefit.
+
+For researchers pursuing learning from interaction, our findings suggest that the critical challenge is not world-model accuracy but world-model usage. Future work should focus on architectures and training procedures that make learned models causally relevant to decision-making.
+
+\section*{Code Availability}
+
+Our experimental framework, including all tasks, training code, and analysis scripts, is available at [URL].
+
+\section*{Acknowledgment}
+[To be added]
+
+\begin{thebibliography}{00}
+
+% World Models and Model-Based RL
+\bibitem{sutton1991dyna} R. S. Sutton, ``Dyna, an integrated architecture for learning, planning, and reacting,'' SIGART Bulletin, vol. 2, no. 4, pp. 160--163, 1991.
+
+\bibitem{ha2018world} D. Ha and J. Schmidhuber, ``World Models,'' arXiv preprint arXiv:1803.10122, 2018.
+
+\bibitem{hafner2020dreamer} D. Hafner, T. Lillicrap, J. Ba, and M. Norouzi, ``Dream to Control: Learning Behaviors by Latent Imagination,'' in ICLR, 2020.
+
+\bibitem{hafner2021dreamerv2} D. Hafner, T. Lillicrap, M. Norouzi, and J. Ba, ``Mastering Atari with Discrete World Models,'' in ICLR, 2021.
+
+\bibitem{hafner2023dreamerv3} D. Hafner et al., ``Mastering Diverse Domains through World Models,'' arXiv preprint arXiv:2301.04104, 2023.
+
+\bibitem{schrittwieser2020muzero} J. Schrittwieser et al., ``Mastering Atari, Go, Chess and Shogi by Planning with a Learned Model,'' Nature, vol. 588, pp. 604--609, 2020.
+
+\bibitem{moerland2023modelbased} T. M. Moerland, J. Broekens, A. Plaat, and C. M. Jonker, ``Model-based Reinforcement Learning: A Survey,'' Foundations and Trends in Machine Learning, vol. 16, no. 1, pp. 1--118, 2023.
+
+% Auxiliary Losses and Self-Supervision
+\bibitem{jaderberg2017unreal} M. Jaderberg et al., ``Reinforcement Learning with Unsupervised Auxiliary Tasks,'' in ICLR, 2017.
+
+\bibitem{shelhamer2016loss} E. Shelhamer, P. Mahmoudieh, M. Argus, and T. Darrell, ``Loss is its own Reward: Self-Supervision for Reinforcement Learning,'' arXiv preprint arXiv:1612.07307, 2016.
+
+\bibitem{burda2019exploration} Y. Burda, H. Edwards, A. Storkey, and O. Klimov, ``Exploration by Random Network Distillation,'' in ICLR, 2019.
+
+\bibitem{laskin2020curl} M. Laskin, A. Srinivas, and P. Abbeel, ``CURL: Contrastive Unsupervised Representations for Reinforcement Learning,'' in ICML, 2020.
+
+\bibitem{schwarzer2021dataefficient} M. Schwarzer et al., ``Data-Efficient Reinforcement Learning with Self-Predictive Representations,'' in ICLR, 2021.
+
+% Model Learning vs Planning
+\bibitem{jiang2015dependence} N. Jiang, A. Kulesza, S. Singh, and R. Lewis, ``The Dependence of Effective Planning Horizon on Model Accuracy,'' in AAMAS, 2015.
+
+\bibitem{vanhasselt2019use} H. van Hasselt, M. Hessel, and J. Aslanides, ``When to use parametric models in reinforcement learning?,'' in NeurIPS, 2019.
+
+% Multi-Task Learning and Gradient Interference
+\bibitem{parisotto2016actormimic} E. Parisotto, J. L. Ba, and R. Salakhutdinov, ``Actor-Mimic: Deep Multitask and Transfer Reinforcement Learning,'' in ICLR, 2016.
+
+\bibitem{yu2020gradient} T. Yu et al., ``Gradient Surgery for Multi-Task Learning,'' in NeurIPS, 2020.
+
+% Core RL Algorithms
+\bibitem{williams1992reinforce} R. J. Williams, ``Simple statistical gradient-following algorithms for connectionist reinforcement learning,'' Machine Learning, vol. 8, no. 3-4, pp. 229--256, 1992.
+
+\bibitem{schulman2017ppo} J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, ``Proximal Policy Optimization Algorithms,'' arXiv preprint arXiv:1707.06347, 2017.
+
+% Value Expansion
+\bibitem{feinberg2018modelbasedvalue} V. Feinberg, A. Wan, I. Stoica, M. I. Jordan, J. E. Gonzalez, and S. Levine, ``Model-Based Value Estimation for Efficient Model-Free Reinforcement Learning,'' in ICML, 2018.
+
+% Transformer Architecture
+\bibitem{vaswani2017attention} A. Vaswani et al., ``Attention Is All You Need,'' in NeurIPS, 2017.
+
+% Cognitive Science
+\bibitem{gopnik1999scientist} A. Gopnik, A. N. Meltzoff, and P. K. Kuhl, ``The Scientist in the Crib: Minds, Brains, and How Children Learn,'' William Morrow \& Co., 1999.
+
+\bibitem{baillargeon2004infants} R. Baillargeon, ``Infants' Physical World,'' Current Directions in Psychological Science, vol. 13, no. 3, pp. 89--94, 2004.
+
+\end{thebibliography}
+
+\end{document}

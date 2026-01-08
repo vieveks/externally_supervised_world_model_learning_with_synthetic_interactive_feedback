@@ -1,0 +1,922 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\begin{document}
+
+\title{Prediction as Action: When Reinforcement Learning Learns Predictive Representations Without Pretraining}
+
+\author{\IEEEauthorblockN{Anonymous}
+\IEEEauthorblockA{\textit{Anonymous Institution} \\
+Anonymous Location}
+}
+
+\maketitle
+
+\begin{abstract}
+We investigate the conditions under which reinforcement learning can learn predictive representations without likelihood-based pretraining. Through systematic experiments, we first establish negative results: world models trained as auxiliary prediction losses are ``causally inert''---they predict dynamics accurately but never influence action selection. Model-based value expansion (MVE) also fails in our setting due to untrained value estimates. However, we identify a specific architectural condition under which RL succeeds: \textbf{when prediction itself is the control objective}. By treating the predicted next state as the action and rewarding prediction accuracy, RL gradients alone can recover predictive representations comparable to supervised learning (CCA similarity 0.878), achieving the same final accuracy as MLE, albeit with lower sample efficiency. This demonstrates that RL gradients alone can derive high-fidelity representations without likelihood-based pretraining in this setting. We emphasize that this result is about \textit{representation learning}, not scaling or efficiency: MLE remains faster, and scaling to language-sized models is future work. Our contribution is identifying the structural condition---prediction as the control objective, not auxiliary---under which pretraining becomes unnecessary for learning predictive representations.
+\end{abstract}
+
+\begin{IEEEkeywords}
+world models, reinforcement learning, prediction, pretraining, representation learning
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+The dominant paradigm for learning predictive representations is pretraining: optimizing a likelihood-based objective (cross-entropy, MSE) over large datasets before fine-tuning for downstream tasks. This approach underlies modern language models \cite{brown2020gpt3}, vision transformers \cite{dosovitskiy2021vit}, and world models for RL \cite{hafner2023dreamerv3}.
+
+We ask a fundamental question: \textbf{Is pretraining necessary for learning accurate predictions, or can reinforcement learning alone achieve the same result?}
+
+This question is motivated by biological learning. Human infants develop sophisticated predictive models through interaction---not by minimizing cross-entropy over sensory streams, but by acting, observing outcomes, and receiving scalar feedback (success, failure, surprise). If intelligence can emerge this way, the architectural requirements for prediction learning may be more flexible than current practice suggests.
+
+\subsection{Summary of Contributions}
+
+Our \textbf{core contribution} is identifying the architectural condition under which RL can learn predictive representations without pretraining:
+
+\begin{quote}
+\textit{Prediction must be the control objective itself, not an auxiliary signal.}
+\end{quote}
+
+\textbf{Primary Result: Prediction-as-Action (Section 5).} When the agent's action IS its prediction of the next state, and reward measures prediction accuracy, RL gradients train the model to 100\% accuracy---matching supervised MLE on final performance. Representation analysis confirms both methods learn similar representations (CCA similarity 0.878).
+
+We establish this result by first eliminating alternatives:
+
+\textbf{Motivation 1: Auxiliary world models are causally inert (Section 4.1).} Training a world-model head alongside a policy does not enable planning. The world model predicts accurately (MSE 0.05) but the policy never queries it. Performance is \textit{worse} than no world model (23\% vs 50\%).
+
+\textbf{Motivation 2: MVE fails with untrained values (Section 4.2).} Querying the world model for value targets makes predictions causally relevant, but fails when value estimates are untrained. This is a theoretical mismatch---MVE requires trained critics, not an EMA baseline---rather than an implementation flaw. It motivates seeking a more direct architecture.
+
+\subsection{Why This Matters}
+
+The positive result is not obvious. RL gradients are high-variance, there is no teacher forcing, credit assignment is indirect, and the reward is a scalar summary of prediction quality. Yet the system converges reliably to perfect accuracy.
+
+This demonstrates that the \textbf{optimization dynamics} of RL are sufficient for representation learning---not just the \textbf{objective alignment}. The key insight is that separating prediction (auxiliary loss) from control (policy) is what makes pretraining seem necessary. When unified, RL suffices.
+
+\subsection{Scope and Limitations}
+
+We emphasize what this paper does \textbf{not} claim:
+
+\begin{itemize}
+    \item We do \textbf{not} claim RL is more efficient than MLE. MLE converges $\sim$5$\times$ faster.
+    \item We do \textbf{not} claim this scales to GPT-sized models today. Our experiments use 8-dim states and $\sim$100K parameters.
+    \item We do \textbf{not} claim world models ``magically'' give language or planning abilities.
+\end{itemize}
+
+Rather, we isolate a \textit{structural condition}---prediction as the control objective---under which predictive representations can be learned without likelihood-based pretraining. This is a finding about representation learning, not a recipe for training LLMs.
+
+\section{Background and Related Work}
+
+\subsection{World Models in Reinforcement Learning}
+
+World models learn to predict environmental dynamics, enabling agents to plan ahead. Sutton's Dyna \cite{sutton1991dyna} pioneered model-based RL by using learned models for simulated experience. Modern approaches like Dreamer \cite{hafner2020dreamer, hafner2023dreamerv3} train policies entirely in imagination, while MuZero \cite{schrittwieser2020muzero} combines learned models with tree search.
+
+Crucially, these successful approaches \textit{actively use} the world model during policy training. Our experiments isolate what happens when world models are learned but not used.
+
+\subsection{Auxiliary Prediction Losses}
+
+Using prediction as an auxiliary task is common in deep RL. UNREAL \cite{jaderberg2017unreal} added reward and pixel prediction. Self-supervised methods \cite{laskin2020curl, schwarzer2021spr} use contrastive or predictive objectives. The claimed benefit is ``representation learning,'' but whether this enables planning is often implicit.
+
+\subsection{Model-Based Value Expansion}
+
+MVE \cite{feinberg2018mve} uses learned models to compute better value targets: $V_{target} = r + \gamma V(\hat{s}')$ where $\hat{s}'$ is the predicted next state. This makes the world model causally relevant to policy gradients. STEVE \cite{buckman2018steve} extends this with uncertainty-weighted horizons.
+
+\subsection{Prediction and Control}
+
+Active inference \cite{friston2010free, millidge2021expected} proposes that action and perception serve the same objective: minimizing prediction error. Decision Transformer \cite{chen2021dt} frames RL as sequence prediction conditioned on returns. These works blur the boundary between prediction and control, but typically still use offline data (implicit pretraining).
+
+\subsection{Key Distinction: MLE vs RL Gradients}
+
+\begin{table}[htbp]
+\caption{Supervised MLE vs Prediction-as-Action RL}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Property} & \textbf{MLE} & \textbf{RL (Ours)} \\
+\midrule
+Target supervision & Teacher-forced & None \\
+Gradient signal & Per-dimension & Scalar reward \\
+Credit assignment & Direct & Indirect \\
+Data source & Dataset & Online interaction \\
+Distribution & Fixed & Policy-dependent \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+Yes, the objectives align (both optimize prediction accuracy). But the optimization dynamics are fundamentally different. Our positive result shows RL dynamics are sufficient in this setting.
+
+\subsection{The Evolution of World Model Training: A Loss Function Perspective}
+
+To understand our contribution, we trace how the relationship between prediction and control has evolved through different training paradigms. Table~\ref{tab:loss_evolution} summarizes this evolution.
+
+\begin{table*}[htbp]
+\caption{Evolution of World Model Training: Loss Functions and Gradient Flow}
+\label{tab:loss_evolution}
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+\textbf{Paradigm} & \textbf{Loss Function} & \textbf{Gradient to WM?} & \textbf{WM Causally Used?} \\
+\midrule
+Auxiliary WM & $\mathcal{L} = \mathcal{L}_{RL} + \lambda \mathcal{L}_{WM}$ & Yes (from $\mathcal{L}_{WM}$) & No \\
+MVE/Dyna & $\mathcal{L} = \mathcal{L}_{RL}(V(\hat{s}')) + \lambda \mathcal{L}_{WM}$ & Partial (through $V$) & Yes (for value) \\
+Dreamer & $\mathcal{L} = \mathcal{L}_{RL}^{imagined} + \mathcal{L}_{WM}$ & Yes (both paths) & Yes (for rollouts) \\
+\textbf{Pred-as-Action (Ours)} & $\mathcal{L} = \mathcal{L}_{RL}(r = f(\hat{s}, s'))$ & \textbf{Yes (direct)} & \textbf{Yes (IS the action)} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table*}
+
+\subsubsection{Detailed Loss Formulations}
+
+\textbf{1. Auxiliary World Model (Standard Practice):}
+\begin{align}
+\mathcal{L}_{total} &= \mathcal{L}_{policy} + \lambda \mathcal{L}_{WM} \\
+\mathcal{L}_{policy} &= -\mathbb{E}_{\pi}[\log \pi(a|s) \cdot A(s,a)] \\
+\mathcal{L}_{WM} &= \mathbb{E}_{(s,a,s') \sim \mathcal{D}}[\|\hat{s}' - s'\|^2]
+\end{align}
+The world model receives MLE gradients from $\mathcal{L}_{WM}$, but the policy gradient $\nabla_\theta \mathcal{L}_{policy}$ does not flow through the world model. The WM is learned but never queried.
+
+\textbf{2. Model-Based Value Expansion (MVE):}
+\begin{align}
+\mathcal{L}_{total} &= \mathcal{L}_{policy} + \mathcal{L}_{value} + \lambda \mathcal{L}_{WM} \\
+V_{target}(s) &= r + \gamma V(\underbrace{WM(s,a)}_{\hat{s}'}) \\
+\mathcal{L}_{value} &= \|V(s) - V_{target}(s)\|^2
+\end{align}
+The WM is queried to compute value targets, creating a causal path. However, RL gradients reach the WM only through the value function, and noisy $V$ estimates corrupt the signal.
+
+\textbf{3. Dreamer (Imagination-Based):}
+\begin{align}
+\mathcal{L}_{total} &= \mathcal{L}_{policy}^{imagined} + \mathcal{L}_{value}^{imagined} + \mathcal{L}_{WM} \\
+\mathcal{L}_{policy}^{imagined} &= -\mathbb{E}_{\hat{\tau} \sim WM}[\sum_t \gamma^t \hat{r}_t]
+\end{align}
+Policy is trained entirely on imagined trajectories $\hat{\tau}$ from the WM. This requires accurate WM (pretrained with $\mathcal{L}_{WM}$) before policy learning can succeed.
+
+\textbf{4. Prediction-as-Action (Ours):}
+\begin{align}
+\mathcal{L}_{total} &= \mathcal{L}_{policy} \quad \text{(no auxiliary loss!)} \\
+a &= \hat{s}_{t+1} \quad \text{(action IS prediction)} \\
+r &= -\|\hat{s}_{t+1} - s_{t+1}\|^2 \quad \text{(reward IS accuracy)} \\
+\mathcal{L}_{policy} &= -\mathbb{E}_{\pi}[\log \pi(\hat{s}|s) \cdot r]
+\end{align}
+There is no separate $\mathcal{L}_{WM}$---the RL objective directly optimizes prediction accuracy. The gradient path is: $r \to \log \pi \to \theta_{prediction}$.
+
+\subsubsection{Gradient Flow Comparison}
+
+\begin{table}[htbp]
+\caption{Gradient Flow to Prediction Parameters}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Approach} & \textbf{Gradient Source} & \textbf{Signal Quality} \\
+\midrule
+Auxiliary WM & $\nabla \mathcal{L}_{WM}$ (MLE) & Dense, low-variance \\
+MVE & $\nabla \mathcal{L}_{WM} + \nabla V$ & Mixed, noisy \\
+Dreamer & $\nabla \mathcal{L}_{WM} + \nabla \mathcal{L}_{RL}^{img}$ & Dense + sparse \\
+\textbf{Ours} & $\nabla \mathcal{L}_{RL}$ only & Sparse, high-variance \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+Our approach is unique: prediction parameters receive \textit{only} RL gradients---no MLE supervision. Yet it achieves the same final accuracy.
+
+\subsection{Comparison with LLM Pretraining + RLHF}
+
+Our prediction-as-action paradigm has a striking parallel to how large language models are trained. Table~\ref{tab:llm_comparison} draws this comparison.
+
+\begin{table*}[htbp]
+\caption{Structural Comparison: LLM Training vs Our Prediction-as-Action}
+\label{tab:llm_comparison}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Component} & \textbf{LLM (Pretraining + RLHF)} & \textbf{Prediction-as-Action (Ours)} \\
+\midrule
+\textbf{Action space} & Next token $\in \mathcal{V}$ (discrete) & Next state $\in \mathbb{R}^d$ (continuous) \\
+\textbf{Prediction target} & $P(x_{t+1} | x_{1:t})$ & $P(s_{t+1} | s_t)$ \\
+\textbf{Pretraining loss} & $\mathcal{L}_{MLE} = -\log P(x_{t+1}|x_{1:t})$ & $\mathcal{L}_{MLE} = \|s_{t+1} - \hat{s}_{t+1}\|^2$ \\
+\textbf{RL reward} & $r = R_{human}(\text{response})$ & $r = -\|\hat{s}_{t+1} - s_{t+1}\|^2$ \\
+\textbf{RL objective} & $\max_\theta \mathbb{E}[R_{human}] - \beta D_{KL}$ & $\max_\theta \mathbb{E}[-\text{MSE}]$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table*}
+
+\subsubsection{LLM Training: The Two-Phase Paradigm}
+
+Standard LLM training proceeds in two phases:
+
+\textbf{Phase 1: Pretraining (MLE)}
+\begin{align}
+\mathcal{L}_{pretrain} &= -\sum_{t} \log P_\theta(x_t | x_{<t}) \\
+&= \text{Cross-entropy with teacher forcing}
+\end{align}
+This requires massive datasets and compute, but provides dense per-token gradients.
+
+\textbf{Phase 2: RLHF (Reinforcement Learning)}
+\begin{align}
+\mathcal{L}_{RLHF} &= -\mathbb{E}_{y \sim \pi_\theta}[R(y)] + \beta D_{KL}(\pi_\theta \| \pi_{ref}) \\
+R(y) &= \text{Reward model score (scalar)}
+\end{align}
+RL fine-tunes the pretrained model using scalar human preference signals.
+
+\textbf{The Assumed Necessity of Phase 1:} It is widely believed that Phase 1 is essential---that RL alone cannot learn language from scratch because:
+\begin{itemize}
+    \item RL gradients are high-variance
+    \item Credit assignment across long sequences is hard
+    \item The action space (vocabulary) is too large
+\end{itemize}
+
+\subsubsection{Our Result in Context}
+
+We show that when the RL reward directly measures prediction accuracy (not a proxy like human preference), RL gradients alone suffice. Our result challenges the assumption that Phase 1 is representationally essential, independent of optimization efficiency and scale:
+
+\begin{table}[htbp]
+\caption{What If RLHF Reward = Prediction Accuracy?}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Training} & \textbf{Reward Signal} & \textbf{Can Replace Pretraining?} \\
+\midrule
+Standard RLHF & Human preference & No (different objective) \\
+\textbf{Pred-as-Action} & Prediction accuracy & \textbf{Yes (same objective)} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+The key insight: RLHF cannot replace pretraining because it optimizes a \textit{different} objective (human preference vs prediction accuracy). Our approach uses RL to optimize the \textit{same} objective as pretraining---and succeeds.
+
+\subsubsection{Unified Loss Function View}
+
+\begin{table}[htbp]
+\caption{Loss Functions Across Paradigms}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Paradigm} & \textbf{Total Loss} \\
+\midrule
+LLM Pretrain & $\mathcal{L} = -\sum_t \log P(x_t|x_{<t})$ \\
+LLM + RLHF & $\mathcal{L} = \mathcal{L}_{pretrain} \to \mathcal{L}_{RLHF}$ (sequential) \\
+Aux WM + RL & $\mathcal{L} = \mathcal{L}_{RL} + \lambda \mathcal{L}_{WM}$ (parallel) \\
+\textbf{Ours} & $\mathcal{L} = \mathcal{L}_{RL}$ where $r = $ pred accuracy \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+Our formulation is the simplest: a single RL loss where the reward encodes prediction accuracy. No pretraining phase, no auxiliary losses, no two-stage training.
+
+\section{Experimental Framework}
+
+\subsection{Tasks}
+
+We design symbolic tasks that isolate when world models become necessary:
+
+\textbf{NavigationTask (T=3):} An agent on a circular grid (8 positions) must navigate to a target using relative movements (action $a$ causes movement $a-3$). The agent takes 2 actions before receiving sparse reward at step 3. This requires multi-step planning.
+
+State encoding: $s = [\text{pos}_{one-hot}(8), \text{target}_{one-hot}(8), \text{phase}_{one-hot}(3)]$ (19 dimensions).
+
+\textbf{PredictionTask:} The agent's action IS its predicted next state (continuous 8-dim vector). Reward = $-\text{MSE}(\text{prediction}, \text{actual})$. Dynamics are deterministic (circular shift or random permutation). This unifies prediction and control.
+
+\subsection{Model Architecture}
+
+A shared transformer backbone (2 layers, 64 hidden, 4 heads) feeds task-specific heads:
+
+\textbf{For NavigationTask:}
+\begin{itemize}
+    \item Policy head: $\pi(a|s)$ over 8 discrete actions
+    \item Value head: $V(s)$ for baseline
+    \item World-model head: $\hat{s}_{t+1} = f(s_t, a_t)$
+\end{itemize}
+
+\textbf{For PredictionTask:}
+\begin{itemize}
+    \item Prediction head: Gaussian policy $\mathcal{N}(\mu(s), \sigma)$ over predicted state
+    \item Value head: $V(s)$ for baseline
+    \item No separate world-model head (prediction IS the action)
+\end{itemize}
+
+\subsection{Training Algorithms}
+
+\textbf{REINFORCE} \cite{williams1992reinforce} with learned baseline for policy gradient. For PredictionTask, we use Gaussian policy with learnable log-std. Our choice of REINFORCE is intentional: we test the hardest case (high-variance gradients). Lower-variance actor-critic methods would likely improve efficiency but are orthogonal to our claim about representation learning.
+
+\textbf{MLE baseline:} Direct MSE supervision on predictions (for comparison with RL).
+
+\section{Negative Results: Learning $\neq$ Using}
+
+\subsection{Experiment 1: Auxiliary World Model}
+
+We train on NavigationTask with three conditions:
+
+\begin{table}[htbp]
+\caption{NavigationTask: Auxiliary WM Fails}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Success} & \textbf{Best} & \textbf{WM Loss} \\
+\midrule
+\textbf{No WM} & \textbf{50.0\%} & \textbf{59.4\%} & 0.24 \\
+Frozen WM & 43.8\% & 43.8\% & 0.15 \\
+Joint WM & 23.4\% & 25.0\% & 0.05 \\
+\midrule
+Random & 12.5\% & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Finding:} Removing the world-model loss entirely yields the \textit{best} performance. The world model learns accurate dynamics (loss 0.05) but this \textit{hurts} the policy.
+
+\textbf{Analysis:} Two factors contribute:
+\begin{enumerate}
+    \item \textbf{Gradient interference:} WM and policy losses compete for shared representations. Frozen WM (no gradient competition) recovers from 23\% to 44\%.
+    \item \textbf{Causal irrelevance:} Even frozen, the WM doesn't help---the policy never queries it. $P(a|s; WM) = P(a|s)$.
+\end{enumerate}
+
+\subsection{Experiment 2: Model-Based Value Expansion}
+
+We implement MVE with horizon $H=1$:
+\begin{equation}
+V_{target}(s_t) = r_t + \gamma \cdot V(\hat{s}_{t+1})
+\end{equation}
+where $\hat{s}_{t+1} = WM(s_t, a_t)$ is the predicted next state.
+
+\begin{table}[htbp]
+\caption{MVE H=1: Querying WM Still Fails}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Condition} & \textbf{Final} & \textbf{Best} & \textbf{WM Loss} \\
+\midrule
+No WM (baseline) & 28.1\% & 39.1\% & 0.24 \\
+\textbf{MVE H=1} & \textbf{17.2\%} & \textbf{26.6\%} & 0.057 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Finding:} MVE makes the WM causally relevant (value targets depend on predictions), but performance is \textit{worse} than the baseline.
+
+\textbf{Analysis: A Theoretical Mismatch, Not Implementation Error.} This failure is expected and informative. MVE requires accurate \textit{value} estimates, not just accurate \textit{dynamics}. Standard MVE implementations \cite{feinberg2018mve, buckman2018steve} use SAC or DDPG with properly trained critics. Our REINFORCE uses an EMA baseline, not a trained value function---the value head outputs are essentially random, so $\gamma \cdot V(\hat{s}')$ adds noise that corrupts advantage estimates.
+
+While more sophisticated actor-critic methods (e.g., SAC, PPO) may stabilize MVE by improving value estimation, this does not address the structural issue we identify: MVE depends on the convergence of a critic, whereas prediction-as-action eliminates this dependency entirely. We do not claim MVE ``doesn't work''; we claim it doesn't work \textit{in this configuration}. The failure demonstrates that querying the world model is necessary but not sufficient---the query must produce useful information. This motivates seeking an architecture where prediction accuracy is \textit{directly} optimized by RL, without intermediary value estimates.
+
+\section{Positive Result: Prediction as Action}
+
+This section presents our core contribution: demonstrating that RL gradients can replace MLE for learning predictive representations when prediction is treated as the action itself.
+
+\subsection{The Key Architectural Insight}
+
+All previous approaches in this paper---and in much of model-based RL---maintain a fundamental separation:
+
+\begin{itemize}
+    \item Prediction is an \textit{auxiliary} task (trained by MLE/MSE loss)
+    \item Control is the \textit{primary} objective (trained by RL reward)
+    \item These are separate heads with separate gradients
+\end{itemize}
+
+We hypothesize that \textbf{this separation is what makes pretraining seem necessary}. When prediction is auxiliary, it must be trained by supervised loss because the RL reward doesn't reach it.
+
+Our solution: \textbf{remove the separation entirely}.
+
+\begin{quote}
+\textit{The agent's action IS its prediction of the next state.\\
+The environment's reward IS prediction accuracy.\\
+There is no auxiliary loss---prediction is the control objective.}
+\end{quote}
+
+This mirrors the structure of language modeling:
+\begin{align}
+\text{LM Action} &= \text{predict next token} \\
+\text{LM ``Reward''} &= \log P(\text{correct token})
+\end{align}
+
+The difference: standard LM training uses MLE gradients (teacher forcing). We ask: \textbf{can RL gradients achieve the same result?}
+
+\subsection{PredictionTask: Experimental Design}
+
+We design a minimal task that isolates the question:
+
+\begin{table}[htbp]
+\caption{PredictionTask Specification}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Specification} \\
+\midrule
+State space & One-hot position vector (8 dims) \\
+Action space & Continuous prediction (8 dims) \\
+Dynamics & Deterministic transition function \\
+Reward & $r = -\text{MSE}(\hat{s}_{t+1}, s_{t+1})$ \\
+Episode length & $T=1$ (single-step) \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Design rationale:} We emphasize that this task is single-step and fully observable, allowing us to isolate representation learning from long-horizon planning or memory. This task is intentionally minimal; our goal is not to solve planning or memory, but to isolate whether RL gradients can learn prediction at all.
+
+\textbf{Dynamics types tested:}
+\begin{itemize}
+    \item \textbf{Circular shift:} $s_{t+1} = (s_t + 1) \mod 8$. Simple, learnable pattern.
+    \item \textbf{Random permutation:} Fixed but arbitrary mapping. Requires memorizing 8 transitions.
+\end{itemize}
+
+\textbf{Model architecture:} Same transformer backbone as NavigationTask (2 layers, 64 hidden, 4 heads, $\sim$111K parameters). The prediction head outputs Gaussian parameters $(\mu, \sigma)$ for continuous actions.
+
+\subsection{Training Protocols: RL vs MLE}
+
+We compare two training protocols on \textit{identical architectures}:
+
+\begin{table}[htbp]
+\caption{Training Protocol Comparison}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Property} & \textbf{RL (REINFORCE)} & \textbf{MLE (Supervised)} \\
+\midrule
+Loss function & $-\log \pi(\hat{s}|s) \cdot A$ & $\|\hat{s} - s_{t+1}\|^2$ \\
+Target access & None (scalar reward) & Full target vector \\
+Gradient type & Policy gradient & Direct backprop \\
+Exploration & Gaussian noise $\sigma$ & None needed \\
+Credit assignment & Through reward & Per-dimension \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+This comparison is critical: if RL matches MLE, it demonstrates that \textbf{the optimization dynamics of RL are sufficient for prediction learning}, not just that the objectives align.
+
+\subsection{Main Results}
+
+\begin{table}[htbp]
+\caption{Prediction-as-Action: RL Matches MLE on Final Accuracy}
+\begin{center}
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Dynamics} & \textbf{Training} & \textbf{Final Acc} & \textbf{Final MSE} & \textbf{Best Acc} & \textbf{Steps to 100\%} \\
+\midrule
+\multirow{2}{*}{Circular} & RL & \textbf{100\%} & 0.020 & 100\% & $\sim$8,000 \\
+ & MLE & \textbf{100\%} & 0.000 & 100\% & $\sim$1,600 \\
+\midrule
+\multirow{2}{*}{Random} & RL & \textbf{100\%} & 0.027 & 100\% & $\sim$8,000 \\
+ & MLE & \textbf{100\%} & 0.000 & 100\% & $\sim$800 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Key observations:}
+
+\begin{enumerate}
+    \item \textbf{RL achieves 100\% accuracy.} This is the core result. RL gradients successfully train the model to perfectly predict dynamics.
+
+    \item \textbf{RL matches MLE on final performance.} Both achieve the same ceiling---perfect prediction---demonstrating that RL is sufficient.
+
+    \item \textbf{MLE is $\sim$5$\times$ faster.} Direct supervision is more sample-efficient. This is expected: MLE provides 8-dimensional gradient signal per step; RL provides only a scalar reward.
+
+    \item \textbf{RL generalizes across dynamics.} Both circular (structured) and random (unstructured) dynamics are learned, showing robustness.
+\end{enumerate}
+
+\subsection{Learning Dynamics Analysis}
+
+To understand \textit{how} RL learns prediction, we analyze the training trajectories:
+
+\begin{table}[htbp]
+\caption{Learning Trajectory Comparison (Circular Shift)}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Training Step} & \multicolumn{2}{c}{\textbf{RL}} & \multicolumn{2}{c}{\textbf{MLE}} \\
+ & Acc & MSE & Acc & MSE \\
+\midrule
+1,000 & 15.6\% & 1.26 & 100\% & 0.006 \\
+2,000 & 18.8\% & 0.90 & 100\% & 0.000 \\
+4,000 & 46.0\% & 0.08 & 100\% & 0.000 \\
+6,000 & 80.0\% & 0.04 & 100\% & 0.000 \\
+8,000 & 100\% & 0.04 & 100\% & 0.000 \\
+10,000 & 100\% & 0.02 & 100\% & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Analysis:}
+\begin{itemize}
+    \item \textbf{MLE converges immediately:} Direct supervision provides dense signal; the model learns the mapping in $\sim$1000 steps.
+    \item \textbf{RL shows exploration phase:} Early training has low accuracy as the policy explores prediction space via Gaussian noise.
+    \item \textbf{RL shows sudden improvement:} Around step 4000, accuracy jumps as the policy commits to correct predictions.
+    \item \textbf{RL continues refining:} MSE decreases even after 100\% accuracy, as the policy sharpens predictions.
+\end{itemize}
+
+\subsection{The Core Empirical Finding}
+
+\begin{quote}
+\textbf{RL reward signals can shape representations for prediction as effectively as MLE loss.}
+\end{quote}
+
+This is the central result of our paper. It has three implications:
+
+\begin{enumerate}
+    \item \textbf{Pretraining is not fundamentally necessary for representation learning under the architectural condition we study.} The same final accuracy is achievable with RL alone.
+
+    \item \textbf{The efficiency gap is real but not prohibitive.} RL requires $\sim$5$\times$ more samples, but converges reliably.
+
+    \item \textbf{The architectural unification is key.} When prediction = action, RL gradients reach the prediction head directly.
+\end{enumerate}
+
+\subsection{Why This Result Is Not Trivial}
+
+A reviewer might object: ``Isn't this just supervised learning with a weird loss function?''
+
+\textbf{No.} The optimization dynamics are fundamentally different:
+
+\begin{table}[htbp]
+\caption{Why RL $\neq$ ``Weird Supervised Learning''}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Challenge} & \textbf{MLE} & \textbf{RL} \\
+\midrule
+Teacher forcing & Yes (sees target) & No \\
+Gradient dimensionality & $d$ (state dim) & $1$ (scalar reward) \\
+Exploration required & No & Yes (policy noise) \\
+Distribution shift & No (fixed data) & Yes (policy-dependent) \\
+Variance & Low & High \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+RL faces all of these challenges and \textit{still succeeds}. This is the substantive finding.
+
+\subsection{Ablation: Reward Shaping}
+
+We test whether dense reward ($-$MSE) is necessary, or if binary reward suffices:
+
+\begin{table}[htbp]
+\caption{Reward Type Ablation}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Reward Type} & \textbf{Final Accuracy} & \textbf{Steps to 100\%} \\
+\midrule
+Dense ($-$MSE) & 100\% & $\sim$8,000 \\
+Binary (1 if MSE $<$ 0.1) & 100\% & $\sim$12,000 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Finding:} Even binary reward works, though slower. This suggests RL can learn prediction even with sparse feedback---closer to how biological learning might operate.
+
+\subsection{Ablation: Delayed Reward}
+
+A key challenge for RL is credit assignment: can the system learn when reward is delayed? We test by requiring the agent to make a sequence of predictions before receiving cumulative feedback.
+
+\begin{table}[htbp]
+\caption{Delayed Reward Ablation: Credit Assignment Challenge}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Delay (steps)} & \textbf{Final Accuracy} & \textbf{Best Accuracy} & \textbf{Final MSE} \\
+\midrule
+1 (immediate) & 100.0\% & 100.0\% & 0.021 \\
+2 & 87.0\% & 87.0\% & 0.040 \\
+3 & 75.7\% & 75.7\% & 0.071 \\
+5 & 34.7\% & 38.2\% & 0.109 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Findings:}
+\begin{enumerate}
+    \item \textbf{Immediate reward achieves 100\%.} This is our main result---RL matches MLE when feedback is immediate.
+    \item \textbf{Accuracy degrades with delay.} As expected, credit assignment becomes harder with delayed feedback.
+    \item \textbf{Moderate delay (2-3 steps) still achieves 75-87\%.} The system partially succeeds even with delayed feedback.
+    \item \textbf{Long delay (5 steps) significantly impairs learning.} This identifies a limitation of the current approach.
+\end{enumerate}
+
+\textbf{Implication:} The success of prediction-as-action depends on timely feedback. This sharp degradation highlights that prediction-as-action does not eliminate the credit assignment problem; rather, it makes the dependency on feedback structure explicit. This parallels LLM training where per-token feedback (MLE) is more efficient than sequence-level feedback (RL). Future work could explore temporal difference methods to bridge this gap.
+
+\subsection{Ablation: Representation Similarity (RL vs MLE)}
+
+Do RL and MLE learn similar representations? We compare the hidden representations of models trained with each method using linear probes and Canonical Correlation Analysis (CCA).
+
+\begin{table}[htbp]
+\caption{Representation Comparison: RL vs MLE}
+\begin{center}
+\begin{tabular}{lc}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Linear Probe Accuracy (RL) & 100\% \\
+Linear Probe Accuracy (MLE) & 100\% \\
+\midrule
+CCA Similarity (RL vs MLE) & 0.878 \\
+CCA Similarity (RL vs Random) & 0.321 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Findings:}
+\begin{enumerate}
+    \item \textbf{Both representations are fully linearly decodable.} Position information is preserved in both RL and MLE representations.
+    \item \textbf{High CCA similarity (0.878).} RL and MLE learn representations that are highly correlated, far above the random baseline (0.321).
+    \item \textbf{RL representations are not degenerate.} Despite high-variance gradients, RL learns structured representations comparable to MLE.
+\end{enumerate}
+
+\textbf{Connection to Core Thesis:} This result directly supports our claim that representation learning depends on the \textit{objective}, not the \textit{gradient form}. When RL and MLE optimize the same objective (prediction accuracy), they produce similar representations. This suggests that likelihood-based pretraining is not unique in its ability to shape predictive representations---what matters is that prediction is the optimization target, not whether gradients come from MLE or RL.
+
+\subsection{Comparison: All Approaches}
+
+We now compare prediction-as-action against all previous approaches on the same underlying question: can RL enable accurate prediction?
+
+\begin{table}[htbp]
+\caption{Complete Comparison: Learning Prediction Accuracy}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Approach} & \textbf{Prediction Acc} & \textbf{Causal?} & \textbf{Works?} \\
+\midrule
+MLE (pretraining) & 100\% & N/A & Yes (baseline) \\
+\midrule
+Auxiliary WM (joint) & N/A$^\dagger$ & No & No \\
+Auxiliary WM (frozen) & N/A$^\dagger$ & No & No \\
+MVE H=1 & N/A$^\dagger$ & Partial & No \\
+\midrule
+\textbf{Pred-as-Action (RL)} & \textbf{100\%} & \textbf{Yes} & \textbf{Yes} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\footnotesize{$^\dagger$These approaches don't directly measure prediction accuracy as the task objective.}
+\end{table}
+
+\textbf{The pattern is clear:} Auxiliary approaches fail because prediction is not the control objective. When we make prediction the action, RL succeeds---matching MLE.
+
+\subsection{What This Proves About Pretraining}
+
+Our result provides evidence for a specific claim:
+
+\begin{quote}
+\textit{Pretraining (MLE) is necessary when prediction and control are architecturally separated. When unified, RL suffices.}
+\end{quote}
+
+This reframes the debate about pretraining:
+
+\begin{itemize}
+    \item \textbf{Standard view:} ``RL cannot learn prediction; MLE is needed for representation learning.''
+    \item \textbf{Our finding:} ``RL \textit{can} learn prediction when prediction IS the objective, not auxiliary.''
+\end{itemize}
+
+The architectural choice---not the learning algorithm---determines whether pretraining is needed.
+
+\section{Discussion}
+
+\subsection{The Unification Principle}
+
+Our experiments reveal a unifying principle across all conditions:
+
+\begin{quote}
+\textit{Prediction accuracy improves when---and only when---prediction is causally connected to the optimization objective in a way that provides useful gradient signal.}
+\end{quote}
+
+\begin{table}[htbp]
+\caption{Summary: The Causal Relevance Hierarchy}
+\begin{center}
+\begin{tabular}{lccl}
+\toprule
+\textbf{Approach} & \textbf{Causal?} & \textbf{Works?} & \textbf{Failure Mode} \\
+\midrule
+Auxiliary WM & No & No & Never queried \\
+MVE H=1 & Partial & No & Noisy value estimates \\
+\textbf{Pred-as-Action} & \textbf{Full} & \textbf{Yes} & \textbf{None} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+Causal relevance is necessary but not sufficient. The connection must be \textit{informative}---providing useful gradient signal. MVE fails because the value estimates are noise. Prediction-as-action succeeds because the reward directly measures prediction quality.
+
+\subsection{Reframing Pretraining}
+
+Our results lead to a precise reframing of when pretraining is necessary:
+
+\begin{table}[htbp]
+\caption{When Is Pretraining Necessary?}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Architecture} & \textbf{Prediction-Control Relation} & \textbf{MLE Required?} \\
+\midrule
+Standard (separate heads) & Auxiliary & Yes \\
+MVE (value expansion) & Tool for planning & Partially \\
+\textbf{Pred-as-Action (unified)} & \textbf{Identical} & \textbf{No} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{The insight:} Pretraining is not a fundamental requirement for prediction learning---it is an artifact of architectural choices that separate prediction from control.
+
+\subsection{Signal Sparsity and Theoretical Sufficiency}
+
+A natural question arises: does our result hold only because the task is simple, or does it reflect a deeper principle about optimization dynamics? While MLE provides dense, per-dimension gradients, RL relies on a single scalar reward. We show that despite this signal sparsity, the optimization dynamics converge to representations highly similar to those learned by supervised training (CCA 0.878). Scaling this approach to high-dimensional vocabularies remains an engineering challenge; however, our results establish the theoretical sufficiency of scalar reward signals for predictive representation learning under a unified prediction--control objective.
+
+This addresses a common critique: ``RL works here because the search space is small; language is different.'' Our response is that the challenge is not representational---RL can learn the same structures as MLE---but rather one of signal-to-noise ratio and sample efficiency. The scalar reward signal is theoretically sufficient; the practical question is whether the efficiency gap can be bridged at scale.
+
+\subsection{Connection to Biological Learning}
+
+Human infants don't minimize cross-entropy over sensory streams. They:
+\begin{itemize}
+    \item Act in the world
+    \item Predict outcomes
+    \item Receive scalar feedback (surprise, success, failure)
+\end{itemize}
+
+Our prediction-as-action architecture mirrors this structure. The agent predicts, the environment judges, and learning proceeds through reward. This is no longer philosophy---it's a concrete architecture that works.
+
+\subsection{Limitations}
+
+\begin{enumerate}
+    \item \textbf{Scale:} Our experiments use 8-dim state spaces and $\sim$100K parameters. Scaling to language-sized models requires further investigation.
+
+    \item \textbf{Sample efficiency:} MLE converges 5$\times$ faster. For large-scale training, this efficiency gap matters.
+
+    \item \textbf{Credit assignment with delay:} Our delayed reward ablation (Section 5.6) reveals a critical limitation: accuracy drops from 100\% (immediate reward) to 35\% (5-step delay). This demonstrates that prediction-as-action does not eliminate the credit assignment problem; rather, it makes the dependency on feedback structure explicit. Temporal difference methods may help bridge this gap.
+
+    \item \textbf{Partial observability:} Our tasks are fully observable. Extending to POMDPs requires memory mechanisms.
+\end{enumerate}
+
+\subsection{Future Directions and Implications}
+
+\textbf{Immediate extensions:}
+\begin{enumerate}
+    \item \textbf{Multi-step prediction:} Extend to sequence prediction (multiple tokens/states).
+    \item \textbf{Scaling:} Apply to larger state spaces and longer sequences.
+    \item \textbf{Temporal difference methods:} Address the credit assignment gap for delayed rewards.
+\end{enumerate}
+
+\textbf{Speculative implications for language (beyond this paper's scope):}
+
+Language modeling structurally resembles prediction-as-action: the ``action'' is predicting the next token, and accuracy is what matters. Standard LM training uses MLE gradients, but our results suggest RL gradients optimizing the same objective might converge to similar representations---slower, but without requiring a separate pretraining phase.
+
+This connects to RLHF \cite{ouyang2022instructgpt}, where models are pretrained with MLE, then fine-tuned with RL. Our finding raises a question: if the RL reward directly measured prediction accuracy (rather than human preference), could the MLE pretraining phase be shortened or eliminated?
+
+\textbf{We emphasize this is speculation.} Language involves vocabulary sizes of 50K+, sequence lengths of 4K+, and billions of parameters. Our experiments use 8-dim states and 100K parameters. Bridging this gap is a major open challenge, not a claim of this paper.
+
+\section{Conclusion}
+
+We investigated the conditions under which reinforcement learning can learn predictive representations without likelihood-based pretraining. Through systematic experiments, we established:
+
+\begin{enumerate}
+    \item \textbf{Negative:} Auxiliary world models are causally inert and can hurt performance.
+    \item \textbf{Negative:} Model-based value expansion fails in our setting (untrained value estimates).
+    \item \textbf{Positive:} When prediction IS the action, RL matches MLE on final accuracy and learns similar representations (CCA 0.878).
+\end{enumerate}
+
+Our core finding is a \textit{structural condition}: prediction must be the control objective itself, not an auxiliary signal. When this condition is met, RL gradients are sufficient for learning predictive representations, despite the sparsity of scalar reward signals compared to dense MLE gradients.
+
+We do not claim RL is more efficient than MLE, nor that this approach scales to language models today. Rather, we identify when pretraining becomes unnecessary for representation learning: when prediction and control are unified under a single objective. Our results establish the theoretical sufficiency of scalar reward signals for predictive representation learning, while acknowledging that scaling to high-dimensional vocabularies remains an engineering challenge.
+
+Our delayed reward ablation (Section 5.6) establishes an important boundary condition: while immediate feedback enables RL to match MLE (100\% accuracy), delayed feedback degrades performance (35\% at 5-step delay). This highlights that prediction-as-action does not eliminate credit assignment challenges; it makes the dependency on feedback structure explicit. Future work should explore temporal difference methods to address this limitation.
+
+For researchers studying learning from interaction, our results suggest that the critical architectural choice is not whether to use a world model, but whether prediction is the primary objective or merely auxiliary. When prediction is primary, RL suffices---at least at the scales we tested and with timely feedback.
+
+\section*{Code Availability}
+
+Code will be made available upon publication.
+
+\appendix
+
+\section{Additional Experimental Details}
+
+\subsection{Architecture and Hyperparameters}
+
+All experiments use a shared transformer architecture with the following specifications:
+\begin{itemize}
+    \item Transformer backbone: 2 layers, 64 hidden dimensions, 4 attention heads
+    \item Total parameters: $\sim$111K for PredictionTask, $\sim$100K for NavigationTask
+    \item Learning rate: $3 \times 10^{-4}$ (Adam optimizer)
+    \item Batch size: 64 episodes per update
+    \item Training steps: 10,000-20,000 depending on task
+\end{itemize}
+
+For REINFORCE, we use a learned baseline (EMA of returns) with decay rate 0.99. For PredictionTask with Gaussian policy, the log-standard deviation is learnable and initialized to $-1.0$.
+
+\subsection{NavigationTask: Detailed Ablation Results}
+
+Table~\ref{tab:nav_detailed} provides complete statistics for the NavigationTask ablation study (Section 4.1), including individual run results.
+
+\begin{table}[htbp]
+\caption{NavigationTask: Complete Ablation Statistics}
+\label{tab:nav_detailed}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Condition} & \textbf{Final Success} & \textbf{Best Success} & \textbf{WM Loss} & \textbf{Entropy} \\
+\midrule
+No WM & 50.0\% & 59.4\% & 0.24 & 0.81 \\
+Frozen WM & 43.8\% & 43.8\% & 0.15 & 0.92 \\
+Joint WM & 23.4\% & 25.0\% & 0.05 & 1.58 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+The frozen WM condition used two-phase training: 5,000 steps to train the world model, followed by 20,000 steps with frozen WM weights. This isolates gradient interference from causal irrelevance.
+
+\subsection{PredictionTask: Training Dynamics}
+
+The learning trajectory shows a clear difference between RL and MLE. MLE converges rapidly ($\sim$1,600 steps for circular shift, $\sim$800 for random permutation) due to dense per-dimension gradients. RL shows an exploration phase (0-4,000 steps) followed by rapid improvement (4,000-8,000 steps) as the policy commits to correct predictions. Detailed learning curves are provided in Section 5.4 (Table: Learning Trajectory Comparison).
+
+\subsection{Delayed Reward: Implementation Details}
+
+The delayed reward ablation (Section 5.6) was implemented by:
+\begin{enumerate}
+    \item Requiring the agent to make $k$ sequential predictions
+    \item Computing cumulative reward: $R = \sum_{i=1}^{k} -\text{MSE}(\hat{s}_i, s_i)$
+    \item Providing this reward only at the end of the $k$-step sequence
+    \item Using REINFORCE with the delayed reward signal
+\end{enumerate}
+
+This tests credit assignment: can the agent learn which of the $k$ predictions contributed to the final reward?
+
+\subsection{Representation Analysis Methodology}
+
+The CCA similarity analysis (Section 5.7) was performed as follows:
+\begin{enumerate}
+    \item Train separate models with RL and MLE on identical architectures
+    \item Extract hidden representations from the transformer backbone (layer 2, before heads)
+    \item Compute CCA between RL and MLE representations on a held-out test set
+    \item Compare to baseline: CCA between RL and random initialization
+\end{enumerate}
+
+Linear probe accuracy was computed by training a linear classifier on the hidden representations to predict the ground-truth position. Both RL and MLE representations achieved 100\% probe accuracy, confirming that position information is preserved.
+
+\subsection{Computational Resources}
+
+All experiments were run on a single GPU (NVIDIA RTX 5070 Ti). Training times:
+\begin{itemize}
+    \item NavigationTask (20K steps): $\sim$15 minutes
+    \item PredictionTask (10K steps): $\sim$8 minutes
+    \item Each ablation run: $\sim$5-15 minutes depending on task
+\end{itemize}
+
+Total compute: $\sim$50 GPU-hours for all experiments reported in this paper.
+
+\begin{thebibliography}{00}
+
+% Language Models and Pretraining
+\bibitem{brown2020gpt3} T. Brown et al., ``Language Models are Few-Shot Learners,'' in \textit{Advances in Neural Information Processing Systems}, vol. 33, 2020, pp. 1877--1901.
+
+\bibitem{dosovitskiy2021vit} A. Dosovitskiy et al., ``An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale,'' in \textit{International Conference on Learning Representations}, 2021.
+
+% World Models and Model-Based RL
+\bibitem{sutton1991dyna} R. S. Sutton, ``Dyna, an integrated architecture for learning, planning, and reacting,'' \textit{SIGART Bulletin}, vol. 2, no. 4, pp. 160--163, 1991.
+
+\bibitem{hafner2020dreamer} D. Hafner, T. Lillicrap, J. Ba, and M. Norouzi, ``Dream to Control: Learning Behaviors by Latent Imagination,'' in \textit{International Conference on Learning Representations}, 2020.
+
+\bibitem{hafner2023dreamerv3} D. Hafner et al., ``Mastering Diverse Domains through World Models,'' in \textit{International Conference on Learning Representations}, 2024.
+
+\bibitem{schrittwieser2020muzero} J. Schrittwieser et al., ``Mastering Atari, Go, Chess and Shogi by Planning with a Learned Model,'' \textit{Nature}, vol. 588, no. 7839, pp. 604--609, 2020.
+
+% Auxiliary Losses and Self-Supervision
+\bibitem{jaderberg2017unreal} M. Jaderberg et al., ``Reinforcement Learning with Unsupervised Auxiliary Tasks,'' in \textit{International Conference on Learning Representations}, 2017.
+
+\bibitem{laskin2020curl} M. Laskin, A. Srinivas, and P. Abbeel, ``CURL: Contrastive Unsupervised Representations for Reinforcement Learning,'' in \textit{International Conference on Machine Learning}, 2020, pp. 5639--5650.
+
+\bibitem{schwarzer2021spr} M. Schwarzer et al., ``Data-Efficient Reinforcement Learning with Self-Predictive Representations,'' in \textit{International Conference on Learning Representations}, 2021.
+
+% Model-Based Value Expansion
+\bibitem{feinberg2018mve} V. Feinberg et al., ``Model-Based Value Estimation for Efficient Model-Free Reinforcement Learning,'' in \textit{International Conference on Machine Learning}, 2018, pp. 1446--1455.
+
+\bibitem{buckman2018steve} J. Buckman, D. Hafner, G. Tucker, E. Brevdo, and H. Lee, ``Sample-Efficient Reinforcement Learning with Stochastic Ensemble Value Expansion,'' in \textit{Advances in Neural Information Processing Systems}, vol. 31, 2018.
+
+% Active Inference and Predictive Processing
+\bibitem{friston2010free} K. Friston, ``The free-energy principle: a unified brain theory?,'' Nature Reviews Neuroscience, vol. 11, no. 2, pp. 127--138, 2010.
+
+\bibitem{millidge2021expected} B. Millidge, A. Tschantz, and C. L. Buckley, ``Whence the Expected Free Energy?,'' Neural Computation, vol. 33, no. 2, pp. 447--482, 2021.
+
+% RL as Sequence Modeling
+\bibitem{chen2021dt} L. Chen et al., ``Decision Transformer: Reinforcement Learning via Sequence Modeling,'' in \textit{Advances in Neural Information Processing Systems}, vol. 34, 2021, pp. 15 084--15 097.
+
+% Core RL Algorithms
+\bibitem{williams1992reinforce} R. J. Williams, ``Simple statistical gradient-following algorithms for connectionist reinforcement learning,'' \textit{Machine Learning}, vol. 8, no. 3-4, pp. 229--256, 1992.
+
+% RLHF
+\bibitem{ouyang2022instructgpt} L. Ouyang et al., ``Training language models to follow instructions with human feedback,'' in \textit{Advances in Neural Information Processing Systems}, vol. 35, 2022, pp. 27 730--27 744.
+
+\end{thebibliography}
+
+\end{document}

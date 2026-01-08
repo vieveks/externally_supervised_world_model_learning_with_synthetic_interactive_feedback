@@ -1,0 +1,39 @@
+# Navigation Task - Two-Phase Training (Frozen WM)
+# Phase 1: Train WM only for 5000 steps
+# Phase 2: Freeze WM, train policy only for 20000 steps
+#
+# This tests: Does a pre-trained WM help when gradient interference is removed?
+
+# Task settings
+task: navigation
+num_actions: 8
+max_episode_length: 3
+
+# State dimension: position(8) + target(8) + phase(3) = 19
+state_dim: 19
+
+# Model architecture
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ff_dim: 128
+dropout: 0.0
+
+# Training
+total_steps: 20000  # Policy training steps (Phase 2)
+wm_warmup_steps: 5000  # WM-only training steps (Phase 1)
+batch_size: 64
+lr: 0.001
+baseline_decay: 0.99
+
+# Loss coefficients (only used in Phase 1 for WM, Phase 2 ignores WM loss)
+world_model_coef: 1.0
+entropy_coef: 0.01
+
+# Logging
+log_interval: 64
+save_interval: 5000
+log_dir: runs/navigation_frozen_wm
+
+# Device
+device: cuda

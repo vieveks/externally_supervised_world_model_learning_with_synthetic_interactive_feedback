@@ -1,0 +1,346 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\begin{document}
+
+\title{From States to Tokens: Prediction-as-Action Scales to Discrete Sequential Prediction Without Likelihood Supervision}
+
+\author{\IEEEauthorblockN{Anonymous}
+\IEEEauthorblockA{\textit{Anonymous Institution} \\
+Anonymous Location}
+}
+
+\maketitle
+
+\begin{abstract}
+We investigate whether reinforcement learning gradients can learn discrete token prediction without likelihood-based supervision. Building on prior work showing that RL matches supervised learning for continuous state prediction when prediction is the control objective, we extend this to discrete tokens---a critical step toward understanding representation learning in language-like domains. Through systematic experiments on deterministic token grammars, we demonstrate that: (1) RL achieves 100\% accuracy matching cross-entropy training on both single-step and multi-step token prediction, (2) discrete action spaces exhibit superior credit assignment compared to continuous spaces (100\% at 7-step delay vs 35\% at 5-step for continuous), and (3) vanilla REINFORCE suffices without specialized credit assignment algorithms for deterministic grammars. Our results establish that the architectural principle of prediction-as-action extends from continuous states to discrete tokens, providing a foundation for understanding when likelihood-based pretraining is architecturally necessary versus merely efficient.
+\end{abstract}
+
+\begin{IEEEkeywords}
+reinforcement learning, token prediction, credit assignment, representation learning, prediction-as-action
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+The dominant approach to learning predictive models uses likelihood-based objectives: cross-entropy for discrete outputs, mean squared error for continuous targets. This paradigm---often called ``pretraining''---is the foundation of modern language models \cite{brown2020gpt3}, vision systems \cite{dosovitskiy2021vit}, and world models \cite{hafner2023dreamerv3}.
+
+A recent line of work \cite{prior_paper} demonstrated that when prediction itself is the control objective (``prediction-as-action''), reinforcement learning gradients can match supervised learning for \textit{continuous} state prediction. This raised a fundamental question: does this architectural principle extend to \textit{discrete} prediction?
+
+This question matters because discrete token prediction is the core primitive of language modeling. If RL gradients can learn token dynamics without likelihood supervision, it suggests that the necessity of pretraining may be architectural rather than fundamental.
+
+\subsection{Our Contribution}
+
+We provide evidence that prediction-as-action extends from continuous states to discrete tokens:
+
+\begin{enumerate}
+    \item \textbf{Equivalence on single-step prediction:} RL matches cross-entropy training, achieving 100\% accuracy on deterministic token grammars (Section \ref{sec:single_step}).
+
+    \item \textbf{Superior multi-step credit assignment:} RL achieves 100\% accuracy with 7-step delayed reward on tokens, compared to 35\% at 5-step delay for continuous states---suggesting discrete action spaces are easier for credit assignment (Section \ref{sec:delay}).
+
+    \item \textbf{Algorithmic simplicity:} Vanilla REINFORCE suffices; specialized credit assignment methods (TD($\lambda$)) are unnecessary for deterministic grammars (Section \ref{sec:algorithms}).
+\end{enumerate}
+
+\subsection{Scope and Limitations}
+
+We emphasize what this paper does \textbf{not} claim:
+
+\begin{itemize}
+    \item We do \textbf{not} claim this is ``language learning''---our vocabulary is 16 tokens, grammars are deterministic, and there is no semantics or compositionality.
+    \item We do \textbf{not} claim RL is more efficient than supervised learning---cross-entropy converges $\sim$5$\times$ faster.
+    \item We do \textbf{not} claim this scales to modern LLMs today---our experiments use $\sim$100K parameters.
+\end{itemize}
+
+Rather, we isolate a specific architectural question: \textit{can RL gradients learn token-level predictive structure without likelihood-based supervision?} The answer, for deterministic grammars at this scale, is yes.
+
+\section{Background and Related Work}
+
+\subsection{Prediction-as-Action Architecture}
+
+Standard model-based RL separates prediction (world model) from control (policy). The world model is trained with supervised losses, while the policy uses RL. Recent work \cite{prior_paper} proposed unifying these: the agent's action \textit{is} its prediction, and reward measures prediction accuracy.
+
+For continuous states:
+\begin{align}
+a_t &= \hat{s}_{t+1} \quad \text{(action IS prediction)} \\
+r_t &= -\|\hat{s}_{t+1} - s_{t+1}\|^2 \quad \text{(reward IS accuracy)}
+\end{align}
+
+This architecture showed RL matches supervised learning for state prediction. We extend this to discrete tokens:
+\begin{align}
+a_t &= \hat{x}_{t+1} \in \mathcal{V} \quad \text{(predict next token)} \\
+r_t &= \mathbb{I}[\hat{x}_{t+1} = x_{t+1}] \quad \text{(binary correctness)}
+\end{align}
+
+\subsection{Credit Assignment in RL}
+
+A core challenge in RL is credit assignment: when reward is delayed, which actions were responsible? For continuous prediction, prior work showed accuracy degrades from 100\% (immediate) to 35\% (5-step delay) using REINFORCE.
+
+Methods like TD($\lambda$) \cite{sutton1998rl} and eligibility traces aim to improve credit assignment by propagating reward signals backward through time. Recent work applies these to language model fine-tuning \cite{grpo_lambda}.
+
+\subsection{Token Prediction and Language Modeling}
+
+Language models predict discrete tokens autoregressively. Standard training uses cross-entropy loss with teacher forcing \cite{brown2020gpt3}:
+\begin{equation}
+\mathcal{L}_{CE} = -\sum_t \log P_\theta(x_t | x_{<t})
+\end{equation}
+
+This provides dense, per-token gradients. RL-based fine-tuning (RLHF) \cite{ouyang2022instructgpt} happens \textit{after} pretraining, using policy gradients for alignment. We ask: can RL gradients learn the prediction task from scratch?
+
+\subsection{Key Distinction from Prior Work}
+
+Unlike RLHF (which optimizes human preference, not prediction accuracy) and auxiliary prediction losses (which use supervised gradients), we use RL to optimize the \textit{same} objective as supervised learning---prediction accuracy---but without likelihood-based supervision.
+
+\section{Experimental Framework}
+
+\subsection{Task: Token Prediction}
+
+We design a minimal task isolating token prediction:
+
+\begin{table}[htbp]
+\caption{Token Prediction Task Specification}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Specification} \\
+\midrule
+State space & One-hot token $\in \{0, ..., 15\}$ \\
+Action space & Discrete token prediction \\
+Dynamics & Deterministic grammar \\
+Reward & Binary correctness \\
+Episode length & $T \in \{1, 3, 5, 7\}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Grammar types:}
+\begin{itemize}
+    \item \textbf{Cyclic:} $x_{t+1} = (x_t + 1) \mod 16$
+    \item \textbf{Permutation:} Fixed random mapping
+\end{itemize}
+
+Both are fully deterministic, allowing us to isolate representation learning from stochasticity.
+
+\subsection{Model Architecture}
+
+Transformer backbone (2 layers, 64 hidden, 4 heads, $\sim$109K parameters):
+\begin{itemize}
+    \item \textbf{Embedding layer:} Maps tokens to continuous space
+    \item \textbf{Prediction head:} Outputs categorical distribution over vocabulary
+    \item \textbf{Value head:} Baseline for REINFORCE
+\end{itemize}
+
+\subsection{Training Protocols}
+
+We compare two methods on identical architectures:
+
+\begin{table}[htbp]
+\caption{Training Protocol Comparison}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Property} & \textbf{RL} & \textbf{Supervised} \\
+\midrule
+Loss & Policy gradient & Cross-entropy \\
+Supervision & Scalar reward & Full target \\
+Gradient type & $\nabla \log \pi \cdot A$ & Direct backprop \\
+Exploration & Categorical sampling & Deterministic \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Results}
+
+\subsection{Single-Step Prediction: RL Matches Supervised Learning}
+\label{sec:single_step}
+
+\begin{table}[htbp]
+\caption{Single-Step Token Prediction (15K Steps)}
+\begin{center}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Grammar} & \textbf{Method} & \textbf{Final Acc} & \textbf{Converged At} \\
+\midrule
+\multirow{2}{*}{Cyclic} & RL & \textbf{100\%} & $\sim$6,000 \\
+ & Supervised & \textbf{100\%} & $\sim$1,200 \\
+\midrule
+\multirow{2}{*}{Permutation} & RL & \textbf{100\%} & $\sim$6,000 \\
+ & Supervised & \textbf{100\%} & $\sim$800 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Key findings:}
+\begin{enumerate}
+    \item RL achieves perfect accuracy, matching supervised learning.
+    \item Supervised learning converges $\sim$5$\times$ faster due to dense gradients.
+    \item Both methods generalize to random permutation (unstructured) grammar.
+\end{enumerate}
+
+\subsection{Multi-Step Delayed Reward: Discrete Tokens Show Superior Credit Assignment}
+\label{sec:delay}
+
+We test credit assignment by requiring the agent to make $k$ sequential predictions before receiving cumulative reward.
+
+\begin{table}[htbp]
+\caption{Delayed Reward Ablation (15K Steps, Cyclic Grammar)}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Sequence Length} & \textbf{Final Accuracy} & \textbf{Converged At} \\
+\midrule
+1 (immediate) & \textbf{100.0\%} & $\sim$6,000 \\
+3 (moderate delay) & \textbf{100.0\%} & $\sim$4,000 \\
+5 (challenging delay) & \textbf{100.0\%} & $\sim$4,000 \\
+7 (long delay) & \textbf{100.0\%} & $\sim$8,000 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Comparison to continuous state prediction:}
+
+\begin{table}[htbp]
+\caption{Credit Assignment: Discrete vs Continuous}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Action Space} & \textbf{Delay Steps} & \textbf{Accuracy} \\
+\midrule
+Continuous (prior work) & 5 & 35\% \\
+\textbf{Discrete (ours)} & \textbf{7} & \textbf{100\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Key insight:} Discrete action spaces exhibit dramatically better credit assignment than continuous spaces under identical RL algorithms. This suggests credit assignment difficulty depends strongly on action-space geometry, not just horizon length.
+
+\subsection{Algorithmic Simplicity: Vanilla REINFORCE Suffices}
+\label{sec:algorithms}
+
+We tested whether TD($\lambda$) improves over vanilla REINFORCE for deterministic grammars.
+
+\textbf{Finding:} Vanilla REINFORCE already achieves 100\% on all sequence lengths. TD($\lambda$) provides no additional benefit for deterministic tasks.
+
+\textbf{Implication:} For deterministic token prediction, sophisticated credit assignment algorithms are unnecessary. The challenge lies in \textit{stochasticity} and \textit{partial observability}, not deterministic sequences.
+
+\section{Discussion}
+
+\subsection{What We Have Shown}
+
+\textbf{Positive:} The prediction-as-action architecture extends from continuous states to discrete tokens. RL gradients can learn token-level predictive structure without likelihood-based supervision for deterministic grammars.
+
+\textbf{Scope:} This is \textit{formal language learning}, not natural language. Our vocabulary is 16 tokens, grammars are deterministic, and there is no semantics.
+
+\subsection{The Discrete-vs-Continuous Asymmetry}
+
+Our most surprising finding is the credit assignment asymmetry:
+
+\begin{itemize}
+    \item \textbf{Continuous prediction:} Degrades rapidly with delay (35\% at 5 steps)
+    \item \textbf{Discrete prediction:} Maintains 100\% even at 7 steps
+\end{itemize}
+
+\textbf{Hypothesis:} Discrete action spaces provide cleaner reward attribution. A continuous prediction can be ``partially correct,'' diluting the gradient signal. Discrete predictions are binary (correct/incorrect), providing sharper feedback.
+
+\subsection{Why This Is Not ``Just Supervised Learning''}
+
+A reviewer might object: ``Isn't reward = correctness just supervised learning?''
+
+No. The optimization dynamics are fundamentally different:
+
+\begin{table}[htbp]
+\caption{RL vs Supervised: Optimization Dynamics}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Property} & \textbf{Supervised} & \textbf{RL} \\
+\midrule
+Teacher forcing & Yes & No \\
+Gradient dim & $|\mathcal{V}|$ (vocab size) & 1 (scalar) \\
+Exploration & None & Required \\
+Data distribution & Fixed & Policy-dependent \\
+Variance & Low & High \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+RL faces all these challenges and \textit{still converges}. This is the substantive finding.
+
+\subsection{Limitations and Future Work}
+
+\textbf{Current limitations:}
+\begin{enumerate}
+    \item \textbf{Determinism:} All grammars are deterministic. Stochastic transition functions remain untested.
+    \item \textbf{Scale:} Vocabulary size is 16. Scaling to 1000+ is future work.
+    \item \textbf{Sample efficiency:} RL requires 5$\times$ more samples than supervised learning.
+    \item \textbf{Compositionality:} No test of compositional generalization or structure learning.
+\end{enumerate}
+
+\textbf{Immediate next steps:}
+\begin{enumerate}
+    \item \textbf{Stochastic grammars:} Test bigram models with $P(x_{t+1}|x_t)$
+    \item \textbf{Larger vocabularies:} Scale to 64-128 tokens
+    \item \textbf{Representation analysis:} CCA similarity between RL and supervised representations
+\end{enumerate}
+
+\textbf{Longer-term directions:}
+\begin{enumerate}
+    \item Grounded language: tokens that cause world-state changes
+    \item Property-based feedback: LLM judges grammaticality, not likelihood
+    \item Compositional generalization: learning structured linguistic rules
+\end{enumerate}
+
+\subsection{Implications for Pretraining}
+
+Our results suggest a nuanced view of when pretraining is necessary:
+
+\begin{quote}
+\textit{Likelihood-based pretraining is necessary when prediction and control are architecturally separated. When unified under prediction-as-action, RL gradients suffice---at least for deterministic token dynamics at small scale.}
+\end{quote}
+
+This does not obsolete pretraining for practical language models. But it clarifies that the necessity is architectural and scale-dependent, not fundamental.
+
+\section{Conclusion}
+
+We demonstrated that the prediction-as-action architecture extends from continuous states to discrete tokens. RL achieves 100\% accuracy on deterministic token grammars, matching supervised learning despite using only scalar reward signals. Discrete action spaces show superior credit assignment compared to continuous spaces (100\% at 7-step delay vs 35\% at 5-step).
+
+Our results establish that for deterministic token prediction at small scale, likelihood-based supervision is not representationally necessary---though it remains more sample-efficient. The critical next step is testing stochastic grammars, which will determine whether this architectural principle extends beyond determinism.
+
+We emphasize that this is \textit{not} language learning in the natural language sense---our experiments use 16-token deterministic grammars without semantics. Rather, we have shown that a specific architectural condition (prediction-as-action) enables RL to learn token-level predictive structure without likelihood-based pretraining for a restricted class of tasks.
+
+\section*{Code Availability}
+
+Code and experiment logs will be made available upon publication.
+
+\begin{thebibliography}{00}
+
+\bibitem{brown2020gpt3} T. Brown et al., ``Language Models are Few-Shot Learners,'' in \textit{Advances in Neural Information Processing Systems}, vol. 33, 2020.
+
+\bibitem{dosovitskiy2021vit} A. Dosovitskiy et al., ``An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale,'' in \textit{ICLR}, 2021.
+
+\bibitem{hafner2023dreamerv3} D. Hafner et al., ``Mastering Diverse Domains through World Models,'' in \textit{ICLR}, 2024.
+
+\bibitem{prior_paper} [Anonymous], ``Prediction as Action: When Reinforcement Learning Learns Predictive Representations Without Pretraining,'' \textit{Under Review}, 2025.
+
+\bibitem{sutton1998rl} R. S. Sutton and A. G. Barto, \textit{Reinforcement Learning: An Introduction}, MIT Press, 1998.
+
+\bibitem{grpo_lambda} [GRPO-$\lambda$ Paper], ``Credit Assignment for LLM Reasoning,'' arXiv:2510.00194, 2024.
+
+\bibitem{ouyang2022instructgpt} L. Ouyang et al., ``Training language models to follow instructions with human feedback,'' in \textit{NeurIPS}, 2022.
+
+\end{thebibliography}
+
+\end{document}

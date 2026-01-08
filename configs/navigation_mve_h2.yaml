@@ -1,0 +1,39 @@
+# Navigation Task with MVE H=2 (2-step value expansion)
+# Tests whether deeper lookahead helps on T=3 task
+
+# Task settings
+task: navigation
+num_actions: 8
+max_episode_length: 3
+
+# State dimension: position(8) + target(8) + phase(3) = 19
+state_dim: 19
+
+# Model architecture
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ff_dim: 128
+dropout: 0.0
+
+# Training
+total_steps: 20000
+batch_size: 64
+lr: 0.001
+baseline_decay: 0.99
+
+# World-model settings
+world_model_coef: 1.0
+entropy_coef: 0.01
+
+# MVE settings - 2-step lookahead
+mve_horizon: 2
+gamma: 0.99
+
+# Logging
+log_interval: 64
+save_interval: 5000
+log_dir: runs/navigation_mve_h2
+
+# Device
+device: cuda

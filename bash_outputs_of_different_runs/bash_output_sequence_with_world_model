@@ -1,0 +1,199 @@
+Training:   0%|          | 0/5000 [00:00<?, ?it/s]
+Training:   1%|�\ufffd         | 64/5000 [00:00<00:32, 150.16it/s]
+Training:   1%|�\ufffd         | 64/5000 [00:00<00:32, 150.16it/s, success=17.19%, entropy=1.93, wm_loss=0.2204]
+Training:   3%|▎         | 128/5000 [00:00<00:18, 257.61it/s, success=17.19%, entropy=1.93, wm_loss=0.2204]
+Training:   3%|▎         | 128/5000 [00:00<00:18, 257.61it/s, success=10.94%, entropy=2.02, wm_loss=0.1370]
+Training:   4%|�\ufffd         | 192/5000 [00:00<00:14, 334.80it/s, success=10.94%, entropy=2.02, wm_loss=0.1370]
+Training:   4%|�\ufffd         | 192/5000 [00:00<00:14, 334.80it/s, success=25.00%, entropy=1.95, wm_loss=0.1187]
+Training:   5%|▌         | 256/5000 [00:00<00:12, 389.35it/s, success=25.00%, entropy=1.95, wm_loss=0.1187]
+Training:   5%|▌         | 256/5000 [00:00<00:12, 389.35it/s, success=31.25%, entropy=1.74, wm_loss=0.1062]
+Training:   6%|▋         | 320/5000 [00:00<00:10, 429.00it/s, success=31.25%, entropy=1.74, wm_loss=0.1062]
+Training:   6%|▋         | 320/5000 [00:00<00:10, 429.00it/s, success=25.00%, entropy=1.51, wm_loss=0.1022]
+Training:   8%|▊         | 384/5000 [00:01<00:10, 455.12it/s, success=25.00%, entropy=1.51, wm_loss=0.1022]
+Training:   8%|▊         | 384/5000 [00:01<00:10, 455.12it/s, success=54.69%, entropy=1.35, wm_loss=0.0716]
+Training:   9%|▉         | 448/5000 [00:01<00:09, 478.04it/s, success=54.69%, entropy=1.35, wm_loss=0.0716]
+Training:   9%|▉         | 448/5000 [00:01<00:09, 478.04it/s, success=50.00%, entropy=1.17, wm_loss=0.0679]
+Training:  10%|█         | 512/5000 [00:01<00:09, 496.80it/s, success=50.00%, entropy=1.17, wm_loss=0.0679]
+Training:  10%|█         | 512/5000 [00:01<00:09, 496.80it/s, success=50.00%, entropy=1.07, wm_loss=0.0603]
+Training:  12%|█�\ufffd        | 576/5000 [00:01<00:08, 511.48it/s, success=50.00%, entropy=1.07, wm_loss=0.0603]
+Training:  12%|█�\ufffd        | 576/5000 [00:01<00:08, 511.48it/s, success=43.75%, entropy=0.93, wm_loss=0.0713]
+Training:  13%|█▎        | 640/5000 [00:01<00:08, 517.98it/s, success=43.75%, entropy=0.93, wm_loss=0.0713]
+Training:  13%|█▎        | 640/5000 [00:01<00:08, 517.98it/s, success=46.88%, entropy=0.84, wm_loss=0.0532]
+Training:  14%|█�\ufffd        | 704/5000 [00:01<00:08, 524.38it/s, success=46.88%, entropy=0.84, wm_loss=0.0532]
+Training:  14%|█�\ufffd        | 704/5000 [00:01<00:08, 524.38it/s, success=40.62%, entropy=0.84, wm_loss=0.0631]
+Training:  15%|█▌        | 768/5000 [00:01<00:08, 528.40it/s, success=40.62%, entropy=0.84, wm_loss=0.0631]
+Training:  15%|█▌        | 768/5000 [00:01<00:08, 528.40it/s, success=64.06%, entropy=0.80, wm_loss=0.0439]
+Training:  17%|█▋        | 832/5000 [00:01<00:07, 532.55it/s, success=64.06%, entropy=0.80, wm_loss=0.0439]
+Training:  17%|█▋        | 832/5000 [00:01<00:07, 532.55it/s, success=59.38%, entropy=0.80, wm_loss=0.0429]
+Training:  18%|█▊        | 896/5000 [00:01<00:07, 531.45it/s, success=59.38%, entropy=0.80, wm_loss=0.0429]
+Training:  18%|█▊        | 896/5000 [00:01<00:07, 531.45it/s, success=51.56%, entropy=0.83, wm_loss=0.0453]
+Training:  19%|█▉        | 960/5000 [00:02<00:07, 529.04it/s, success=51.56%, entropy=0.83, wm_loss=0.0453]
+Training:  19%|█▉        | 960/5000 [00:02<00:07, 529.04it/s, success=59.38%, entropy=0.74, wm_loss=0.0434]
+Training:  20%|██        | 1024/5000 [00:02<00:07, 532.33it/s, success=59.38%, entropy=0.74, wm_loss=0.0434]
+Training:  20%|██        | 1024/5000 [00:02<00:07, 532.33it/s, success=59.38%, entropy=0.60, wm_loss=0.0473]
+Training:  22%|██�\ufffd       | 1088/5000 [00:02<00:07, 531.87it/s, success=59.38%, entropy=0.60, wm_loss=0.0473]
+Training:  22%|██�\ufffd       | 1088/5000 [00:02<00:07, 531.87it/s, success=60.94%, entropy=0.56, wm_loss=0.0451]
+Training:  23%|██▎       | 1152/5000 [00:02<00:07, 534.15it/s, success=60.94%, entropy=0.56, wm_loss=0.0451]
+Training:  23%|██▎       | 1152/5000 [00:02<00:07, 534.15it/s, success=60.94%, entropy=0.48, wm_loss=0.0445]
+Training:  24%|██�\ufffd       | 1216/5000 [00:02<00:07, 537.88it/s, success=60.94%, entropy=0.48, wm_loss=0.0445]
+Training:  24%|██�\ufffd       | 1216/5000 [00:02<00:07, 537.88it/s, success=64.06%, entropy=0.41, wm_loss=0.0490]
+Training:  26%|██▌       | 1280/5000 [00:02<00:06, 536.50it/s, success=64.06%, entropy=0.41, wm_loss=0.0490]
+Training:  26%|██▌       | 1280/5000 [00:02<00:06, 536.50it/s, success=70.31%, entropy=0.41, wm_loss=0.0392]
+Training:  27%|██▋       | 1344/5000 [00:02<00:06, 540.98it/s, success=70.31%, entropy=0.41, wm_loss=0.0392]
+Training:  27%|██▋       | 1344/5000 [00:02<00:06, 540.98it/s, success=64.06%, entropy=0.37, wm_loss=0.0429]
+Training:  28%|██▊       | 1408/5000 [00:02<00:06, 540.03it/s, success=64.06%, entropy=0.37, wm_loss=0.0429]
+Training:  28%|██▊       | 1408/5000 [00:02<00:06, 540.03it/s, success=71.88%, entropy=0.34, wm_loss=0.0393]
+Training:  29%|██▉       | 1472/5000 [00:03<00:06, 540.73it/s, success=71.88%, entropy=0.34, wm_loss=0.0393]
+Training:  29%|██▉       | 1472/5000 [00:03<00:06, 540.73it/s, success=81.25%, entropy=0.33, wm_loss=0.0323]
+Training:  31%|███       | 1536/5000 [00:03<00:06, 539.85it/s, success=81.25%, entropy=0.33, wm_loss=0.0323]
+Training:  31%|███       | 1536/5000 [00:03<00:06, 539.85it/s, success=75.00%, entropy=0.29, wm_loss=0.0414]
+Training:  32%|███�\ufffd      | 1600/5000 [00:03<00:06, 540.60it/s, success=75.00%, entropy=0.29, wm_loss=0.0414]
+Training:  32%|███�\ufffd      | 1600/5000 [00:03<00:06, 540.60it/s, success=76.56%, entropy=0.29, wm_loss=0.0392]
+Training:  33%|███▎      | 1664/5000 [00:03<00:06, 541.14it/s, success=76.56%, entropy=0.29, wm_loss=0.0392]
+Training:  33%|███▎      | 1664/5000 [00:03<00:06, 541.14it/s, success=64.06%, entropy=0.26, wm_loss=0.0412]
+Training:  35%|███�\ufffd      | 1728/5000 [00:03<00:06, 542.89it/s, success=64.06%, entropy=0.26, wm_loss=0.0412]
+Training:  35%|███�\ufffd      | 1728/5000 [00:03<00:06, 542.89it/s, success=76.56%, entropy=0.25, wm_loss=0.0347]
+Training:  36%|███▌      | 1792/5000 [00:03<00:05, 540.00it/s, success=76.56%, entropy=0.25, wm_loss=0.0347]
+Training:  36%|███▌      | 1792/5000 [00:03<00:05, 540.00it/s, success=70.31%, entropy=0.24, wm_loss=0.0370]
+Training:  37%|███▋      | 1856/5000 [00:03<00:05, 540.71it/s, success=70.31%, entropy=0.24, wm_loss=0.0370]
+Training:  37%|███▋      | 1856/5000 [00:03<00:05, 540.71it/s, success=79.69%, entropy=0.23, wm_loss=0.0324]
+Training:  38%|███▊      | 1920/5000 [00:03<00:05, 539.87it/s, success=79.69%, entropy=0.23, wm_loss=0.0324]
+Training:  38%|███▊      | 1920/5000 [00:03<00:05, 539.87it/s, success=71.88%, entropy=0.21, wm_loss=0.0356]
+Training:  40%|███▉      | 1984/5000 [00:04<00:05, 539.71it/s, success=71.88%, entropy=0.21, wm_loss=0.0356]
+Training:  40%|███▉      | 1984/5000 [00:04<00:05, 539.71it/s, success=73.44%, entropy=0.20, wm_loss=0.0353]
+Training:  41%|████      | 2048/5000 [00:04<00:05, 537.28it/s, success=73.44%, entropy=0.20, wm_loss=0.0353]
+Training:  41%|████      | 2048/5000 [00:04<00:05, 537.28it/s, success=56.25%, entropy=0.19, wm_loss=0.0440]
+Training:  42%|████�\ufffd     | 2112/5000 [00:04<00:05, 536.10it/s, success=56.25%, entropy=0.19, wm_loss=0.0440]
+Training:  42%|████�\ufffd     | 2112/5000 [00:04<00:05, 536.10it/s, success=78.12%, entropy=0.18, wm_loss=0.0287]
+Training:  44%|████▎     | 2176/5000 [00:04<00:05, 542.06it/s, success=78.12%, entropy=0.18, wm_loss=0.0287]
+Training:  44%|████▎     | 2176/5000 [00:04<00:05, 542.06it/s, success=82.81%, entropy=0.17, wm_loss=0.0346]
+Training:  45%|████�\ufffd     | 2240/5000 [00:04<00:05, 536.60it/s, success=82.81%, entropy=0.17, wm_loss=0.0346]
+Training:  45%|████�\ufffd     | 2240/5000 [00:04<00:05, 536.60it/s, success=70.31%, entropy=0.16, wm_loss=0.0359]
+Training:  46%|████▌     | 2304/5000 [00:04<00:05, 537.95it/s, success=70.31%, entropy=0.16, wm_loss=0.0359]
+Training:  46%|████▌     | 2304/5000 [00:04<00:05, 537.95it/s, success=68.75%, entropy=0.15, wm_loss=0.0371]
+Training:  47%|████▋     | 2368/5000 [00:04<00:04, 536.59it/s, success=68.75%, entropy=0.15, wm_loss=0.0371]
+Training:  47%|████▋     | 2368/5000 [00:04<00:04, 536.59it/s, success=81.25%, entropy=0.15, wm_loss=0.0280]
+Training:  49%|████▊     | 2432/5000 [00:04<00:04, 538.36it/s, success=81.25%, entropy=0.15, wm_loss=0.0280]
+Training:  49%|████▊     | 2432/5000 [00:04<00:04, 538.36it/s, success=79.69%, entropy=0.14, wm_loss=0.0322]
+Training:  50%|████▉     | 2496/5000 [00:04<00:04, 538.20it/s, success=79.69%, entropy=0.14, wm_loss=0.0322]
+Training:  50%|████▉     | 2496/5000 [00:04<00:04, 538.20it/s, success=75.00%, entropy=0.13, wm_loss=0.0307]
+Training:  51%|█████     | 2560/5000 [00:05<00:04, 535.38it/s, success=75.00%, entropy=0.13, wm_loss=0.0307]
+Training:  51%|█████     | 2560/5000 [00:05<00:04, 535.38it/s, success=76.56%, entropy=0.12, wm_loss=0.0351]
+Training:  52%|█████�\ufffd    | 2624/5000 [00:05<00:04, 534.76it/s, success=76.56%, entropy=0.12, wm_loss=0.0351]
+Training:  52%|█████�\ufffd    | 2624/5000 [00:05<00:04, 534.76it/s, success=62.50%, entropy=0.12, wm_loss=0.0421]
+Training:  54%|█████�\ufffd    | 2688/5000 [00:05<00:04, 535.68it/s, success=62.50%, entropy=0.12, wm_loss=0.0421]
+Training:  54%|█████�\ufffd    | 2688/5000 [00:05<00:04, 535.68it/s, success=76.56%, entropy=0.12, wm_loss=0.0323]
+Training:  55%|█████▌    | 2752/5000 [00:05<00:04, 530.98it/s, success=76.56%, entropy=0.12, wm_loss=0.0323]
+Training:  55%|█████▌    | 2752/5000 [00:05<00:04, 530.98it/s, success=65.62%, entropy=0.11, wm_loss=0.0352]
+Training:  56%|█████▋    | 2816/5000 [00:05<00:04, 531.85it/s, success=65.62%, entropy=0.11, wm_loss=0.0352]
+Training:  56%|█████▋    | 2816/5000 [00:05<00:04, 531.85it/s, success=76.56%, entropy=0.11, wm_loss=0.0333]
+Training:  58%|█████▊    | 2880/5000 [00:05<00:03, 534.97it/s, success=76.56%, entropy=0.11, wm_loss=0.0333]
+Training:  58%|█████▊    | 2880/5000 [00:05<00:03, 534.97it/s, success=67.19%, entropy=0.11, wm_loss=0.0333]
+Training:  59%|█████▉    | 2944/5000 [00:05<00:03, 534.26it/s, success=67.19%, entropy=0.11, wm_loss=0.0333]
+Training:  59%|█████▉    | 2944/5000 [00:05<00:03, 534.26it/s, success=76.56%, entropy=0.11, wm_loss=0.0263]
+Training:  60%|██████    | 3008/5000 [00:05<00:03, 534.43it/s, success=76.56%, entropy=0.11, wm_loss=0.0263]
+Training:  60%|██████    | 3008/5000 [00:05<00:03, 534.43it/s, success=78.12%, entropy=0.11, wm_loss=0.0322]
+Training:  61%|██████�\ufffd   | 3072/5000 [00:06<00:03, 531.64it/s, success=78.12%, entropy=0.11, wm_loss=0.0322]
+Training:  61%|██████�\ufffd   | 3072/5000 [00:06<00:03, 531.64it/s, success=76.56%, entropy=0.11, wm_loss=0.0378]
+Training:  63%|██████▎   | 3136/5000 [00:06<00:03, 532.14it/s, success=76.56%, entropy=0.11, wm_loss=0.0378]
+Training:  63%|██████▎   | 3136/5000 [00:06<00:03, 532.14it/s, success=79.69%, entropy=0.10, wm_loss=0.0348]
+Training:  64%|██████�\ufffd   | 3200/5000 [00:06<00:03, 533.83it/s, success=79.69%, entropy=0.10, wm_loss=0.0348]
+Training:  64%|██████�\ufffd   | 3200/5000 [00:06<00:03, 533.83it/s, success=68.75%, entropy=0.09, wm_loss=0.0350]
+Training:  65%|██████▌   | 3264/5000 [00:06<00:03, 533.90it/s, success=68.75%, entropy=0.09, wm_loss=0.0350]
+Training:  65%|██████▌   | 3264/5000 [00:06<00:03, 533.90it/s, success=73.44%, entropy=0.09, wm_loss=0.0330]
+Training:  67%|██████▋   | 3328/5000 [00:06<00:03, 535.07it/s, success=73.44%, entropy=0.09, wm_loss=0.0330]
+Training:  67%|██████▋   | 3328/5000 [00:06<00:03, 535.07it/s, success=68.75%, entropy=0.09, wm_loss=0.0351]
+Training:  68%|██████▊   | 3392/5000 [00:06<00:03, 534.58it/s, success=68.75%, entropy=0.09, wm_loss=0.0351]
+Training:  68%|██████▊   | 3392/5000 [00:06<00:03, 534.58it/s, success=76.56%, entropy=0.09, wm_loss=0.0308]
+Training:  69%|██████▉   | 3456/5000 [00:06<00:02, 537.81it/s, success=76.56%, entropy=0.09, wm_loss=0.0308]
+Training:  69%|██████▉   | 3456/5000 [00:06<00:02, 537.81it/s, success=70.31%, entropy=0.09, wm_loss=0.0281]
+Training:  70%|███████   | 3520/5000 [00:06<00:02, 540.53it/s, success=70.31%, entropy=0.09, wm_loss=0.0281]
+Training:  70%|███████   | 3520/5000 [00:06<00:02, 540.53it/s, success=73.44%, entropy=0.09, wm_loss=0.0319]
+Training:  72%|███████�\ufffd  | 3584/5000 [00:07<00:02, 535.20it/s, success=73.44%, entropy=0.09, wm_loss=0.0319]
+Training:  72%|███████�\ufffd  | 3584/5000 [00:07<00:02, 535.20it/s, success=71.88%, entropy=0.08, wm_loss=0.0307]
+Training:  73%|███████▎  | 3648/5000 [00:07<00:02, 540.06it/s, success=71.88%, entropy=0.08, wm_loss=0.0307]
+Training:  73%|███████▎  | 3648/5000 [00:07<00:02, 540.06it/s, success=65.62%, entropy=0.09, wm_loss=0.0335]
+Training:  74%|███████�\ufffd  | 3712/5000 [00:07<00:02, 541.80it/s, success=65.62%, entropy=0.09, wm_loss=0.0335]
+Training:  74%|███████�\ufffd  | 3712/5000 [00:07<00:02, 541.80it/s, success=70.31%, entropy=0.09, wm_loss=0.0329]
+Training:  76%|███████▌  | 3776/5000 [00:07<00:02, 540.60it/s, success=70.31%, entropy=0.09, wm_loss=0.0329]
+Training:  76%|███████▌  | 3776/5000 [00:07<00:02, 540.60it/s, success=60.94%, entropy=0.08, wm_loss=0.0384]
+Training:  77%|███████▋  | 3840/5000 [00:07<00:02, 536.88it/s, success=60.94%, entropy=0.08, wm_loss=0.0384]
+Training:  77%|███████▋  | 3840/5000 [00:07<00:02, 536.88it/s, success=71.88%, entropy=0.08, wm_loss=0.0300]
+Training:  78%|███████▊  | 3904/5000 [00:07<00:02, 535.89it/s, success=71.88%, entropy=0.08, wm_loss=0.0300]
+Training:  78%|███████▊  | 3904/5000 [00:07<00:02, 535.89it/s, success=73.44%, entropy=0.08, wm_loss=0.0345]
+Training:  79%|███████▉  | 3968/5000 [00:07<00:01, 536.91it/s, success=73.44%, entropy=0.08, wm_loss=0.0345]
+Training:  79%|███████▉  | 3968/5000 [00:07<00:01, 536.91it/s, success=71.88%, entropy=0.08, wm_loss=0.0336]
+Training:  81%|████████  | 4032/5000 [00:07<00:01, 537.61it/s, success=71.88%, entropy=0.08, wm_loss=0.0336]
+Training:  81%|████████  | 4032/5000 [00:07<00:01, 537.61it/s, success=78.12%, entropy=0.08, wm_loss=0.0378]
+Training:  82%|████████�\ufffd | 4096/5000 [00:07<00:01, 537.70it/s, success=78.12%, entropy=0.08, wm_loss=0.0378]
+Training:  82%|████████�\ufffd | 4096/5000 [00:07<00:01, 537.70it/s, success=76.56%, entropy=0.08, wm_loss=0.0321]
+Training:  83%|████████▎ | 4160/5000 [00:08<00:01, 538.00it/s, success=76.56%, entropy=0.08, wm_loss=0.0321]
+Training:  83%|████████▎ | 4160/5000 [00:08<00:01, 538.00it/s, success=76.56%, entropy=0.07, wm_loss=0.0325]
+Training:  84%|████████�\ufffd | 4224/5000 [00:08<00:01, 536.75it/s, success=76.56%, entropy=0.07, wm_loss=0.0325]
+Training:  84%|████████�\ufffd | 4224/5000 [00:08<00:01, 536.75it/s, success=73.44%, entropy=0.07, wm_loss=0.0345]
+Training:  86%|████████▌ | 4288/5000 [00:08<00:01, 538.43it/s, success=73.44%, entropy=0.07, wm_loss=0.0345]
+Training:  86%|████████▌ | 4288/5000 [00:08<00:01, 538.43it/s, success=81.25%, entropy=0.07, wm_loss=0.0289]
+Training:  87%|████████▋ | 4352/5000 [00:08<00:01, 540.98it/s, success=81.25%, entropy=0.07, wm_loss=0.0289]
+Training:  87%|████████▋ | 4352/5000 [00:08<00:01, 540.98it/s, success=76.56%, entropy=0.06, wm_loss=0.0342]
+Training:  88%|████████▊ | 4416/5000 [00:08<00:01, 540.03it/s, success=76.56%, entropy=0.06, wm_loss=0.0342]
+Training:  88%|████████▊ | 4416/5000 [00:08<00:01, 540.03it/s, success=65.62%, entropy=0.06, wm_loss=0.0428]
+Training:  90%|████████▉ | 4480/5000 [00:08<00:00, 536.64it/s, success=65.62%, entropy=0.06, wm_loss=0.0428]
+Training:  90%|████████▉ | 4480/5000 [00:08<00:00, 536.64it/s, success=68.75%, entropy=0.06, wm_loss=0.0358]
+Training:  91%|█████████ | 4544/5000 [00:08<00:00, 535.23it/s, success=68.75%, entropy=0.06, wm_loss=0.0358]
+Training:  91%|█████████ | 4544/5000 [00:08<00:00, 535.23it/s, success=73.44%, entropy=0.06, wm_loss=0.0303]
+Training:  92%|█████████�\ufffd| 4608/5000 [00:08<00:00, 535.09it/s, success=73.44%, entropy=0.06, wm_loss=0.0303]
+Training:  92%|█████████�\ufffd| 4608/5000 [00:08<00:00, 535.09it/s, success=73.44%, entropy=0.07, wm_loss=0.0345]
+Training:  93%|█████████▎| 4672/5000 [00:09<00:00, 534.56it/s, success=73.44%, entropy=0.07, wm_loss=0.0345]
+Training:  93%|█████████▎| 4672/5000 [00:09<00:00, 534.56it/s, success=73.44%, entropy=0.06, wm_loss=0.0394]
+Training:  95%|█████████�\ufffd| 4736/5000 [00:09<00:00, 534.19it/s, success=73.44%, entropy=0.06, wm_loss=0.0394]
+Training:  95%|█████████�\ufffd| 4736/5000 [00:09<00:00, 534.19it/s, success=75.00%, entropy=0.06, wm_loss=0.0406]
+Training:  96%|█████████▌| 4800/5000 [00:09<00:00, 539.33it/s, success=75.00%, entropy=0.06, wm_loss=0.0406]
+Training:  96%|█████████▌| 4800/5000 [00:09<00:00, 539.33it/s, success=79.69%, entropy=0.06, wm_loss=0.0293]
+Training:  97%|█████████▋| 4864/5000 [00:09<00:00, 541.97it/s, success=79.69%, entropy=0.06, wm_loss=0.0293]
+Training:  97%|█████████▋| 4864/5000 [00:09<00:00, 541.97it/s, success=68.75%, entropy=0.06, wm_loss=0.0360]
+Training:  99%|█████████▊| 4928/5000 [00:09<00:00, 539.35it/s, success=68.75%, entropy=0.06, wm_loss=0.0360]
+Training:  99%|█████████▊| 4928/5000 [00:09<00:00, 539.35it/s, success=75.00%, entropy=0.05, wm_loss=0.0327]
+Training: 100%|█████████▉| 4992/5000 [00:09<00:00, 540.25it/s, success=75.00%, entropy=0.05, wm_loss=0.0327]
+Training: 100%|█████████▉| 4992/5000 [00:09<00:00, 540.25it/s, success=73.44%, entropy=0.06, wm_loss=0.0354]
+Training: 5056it [00:09, 536.92it/s, success=73.44%, entropy=0.06, wm_loss=0.0354]                          
+Training: 5056it [00:09, 536.92it/s, success=70.31%, entropy=0.05, wm_loss=0.0364]
+Training: 5056it [00:09, 519.27it/s, success=70.31%, entropy=0.05, wm_loss=0.0364]
+
+Loaded config from configs\sequence_next.yaml
+
+==================================================
+WMIL MVP Configuration
+==================================================
+Task: sequence_next
+Actions: 8
+Model: 2 layers, hidden=64
+Algorithm: reinforce
+Total steps: 5000
+Batch size: 64
+Device: cuda
+==================================================
+
+TensorBoard not available, using console logging only
+Model parameters: 116,625
+Device: cuda
+Log dir: runs\sequence_next\run_1767273984
+
+==================================================
+Training Complete!
+==================================================
+Total steps: 5,056
+Total episodes: 5,056
+Best success rate: 82.81%
+Final success rate: 70.31%
+Final entropy: 0.0541
+Final world-model loss: 0.0364
+
+--------------------------------------------------
+MVP Success Criteria:
+--------------------------------------------------
+1. Success > 12.5% (random): ✓ (70.31%)
+2. Success > 50%: ✓ (70.31%)
+3. Entropy ↓: Check TensorBoard (current: 0.0541)
+4. WM Loss ↓: Check TensorBoard (current: 0.0364)
+
+✓ MVP PASSED - Ready for Phase 2!

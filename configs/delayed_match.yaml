@@ -1,0 +1,40 @@
+# WMIL DelayedMatch Task Configuration
+# Phase 3: Multi-step task with delayed reward
+
+# Task
+task: delayed_match
+num_actions: 8
+
+# Model - need larger state_dim for phase indicator
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ff_dim: 256
+dropout: 0.0
+
+# State: 8 position one-hot + 1 phase indicator = 9
+state_dim: 9
+
+# Training
+algorithm: reinforce
+lr: 1e-3
+baseline_decay: 0.99
+entropy_coef: 0.01
+world_model_coef: 1.0
+
+# Environment - 2 steps per episode (crucial!)
+parent: deterministic
+max_episode_length: 2  # Step 0: see target, Step 1: get result
+
+# Rollout - collect episodes, not single steps
+batch_size: 64  # Number of episodes per batch
+total_steps: 10000  # Total training steps
+log_interval: 200
+save_interval: 2000
+
+# Paths
+experiment_dir: experiments
+log_dir: runs/delayed_match
+
+# Device
+device: auto

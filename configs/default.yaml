@@ -1,0 +1,40 @@
+# WMIL MVP Configuration
+# Locked configuration - do not change until MVP succeeds
+
+# Task
+task: pattern_echo
+num_actions: 8
+
+# Model (minimal for fast iteration)
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ff_dim: 256
+dropout: 0.0  # No dropout for MVP
+
+# State
+state_dim: 8  # Same as num_actions for PatternEcho (one-hot target)
+
+# Training
+algorithm: reinforce
+lr: 1e-3
+baseline_decay: 0.99
+entropy_coef: 0.01
+world_model_coef: 1.0
+
+# Environment
+parent: deterministic
+max_episode_length: 1  # Single-step task
+
+# Rollout
+batch_size: 64
+total_steps: 10000
+log_interval: 100
+save_interval: 1000
+
+# Paths
+experiment_dir: experiments
+log_dir: runs
+
+# Device
+device: auto  # Will use CUDA if available

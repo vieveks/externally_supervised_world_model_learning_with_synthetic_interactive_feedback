@@ -1,0 +1,35 @@
+# Navigation Task Configuration (T=3 with relative movement)
+# This task STRUCTURALLY requires world-model for planning
+
+# Task settings
+task: navigation
+num_actions: 8  # Also num_positions (8 positions, 8 relative moves)
+max_episode_length: 3  # T=3: two actions before reward
+
+# State dimension: position(8) + target(8) + phase(3) = 19
+state_dim: 19
+
+# Model architecture (same as previous experiments)
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ff_dim: 128
+dropout: 0.0
+
+# Training
+total_steps: 20000  # More steps for harder task
+batch_size: 64
+lr: 0.001
+baseline_decay: 0.99
+
+# World-model coefficient (WITH world-model)
+world_model_coef: 1.0
+entropy_coef: 0.01
+
+# Logging
+log_interval: 64
+save_interval: 5000
+log_dir: runs/navigation
+
+# Device
+device: cuda

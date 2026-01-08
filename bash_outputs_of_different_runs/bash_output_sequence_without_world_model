@@ -1,0 +1,16 @@
+=== SequenceNext WITHOUT World-Model ===
+--- Run  ---
+Best success rate: 84.38%
+Final success rate: 76.56%
+Final entropy: 0.0433
+Final world-model loss: 0.1645
+--- Run  ---
+Best success rate: 90.62%
+Final success rate: 82.81%
+Final entropy: 0.0368
+Final world-model loss: 0.1648
+--- Run  ---
+Best success rate: 100.00%
+Final success rate: 100.00%
+Final entropy: 0.0582
+Final world-model loss: 0.2513

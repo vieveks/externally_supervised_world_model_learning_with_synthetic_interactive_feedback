@@ -1,0 +1,40 @@
+# WMIL DelayedMatch Ablation: No World Model
+# Purpose: Test if world-model matters for delayed reward task
+
+# Task
+task: delayed_match
+num_actions: 8
+
+# Model
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ff_dim: 256
+dropout: 0.0
+
+# State: 8 position one-hot + 1 phase indicator = 9
+state_dim: 9
+
+# Training
+algorithm: reinforce
+lr: 1e-3
+baseline_decay: 0.99
+entropy_coef: 0.01
+world_model_coef: 0.0  # ABLATION: Disabled
+
+# Environment
+parent: deterministic
+max_episode_length: 2
+
+# Rollout
+batch_size: 64
+total_steps: 10000
+log_interval: 200
+save_interval: 2000
+
+# Paths
+experiment_dir: experiments
+log_dir: runs/delayed_match_no_wm
+
+# Device
+device: auto
