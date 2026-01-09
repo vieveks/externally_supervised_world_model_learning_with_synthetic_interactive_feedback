@@ -1,0 +1,169 @@
+
+================================================================================
+EXPERIMENT 1: RL vs MLE on Ambiguous Grammar
+================================================================================
+
+======================================================================
+WEEK 1 CORE EXPERIMENT: RL vs MLE on Ambiguous Grammar
+======================================================================
+
+Ambiguity Level: high
+This tests whether RL can maintain distributions over ambiguous tokens.
+
+Grammar Properties:
+  Oracle accuracy: 75.00%
+  Ambiguous tokens: 8/16
+  Average entropy: 0.347
+  Normalized entropy: 0.125
+
+[NOTICE] Full integration pending - running standalone experiments
+Will train RL and MLE directly on AmbiguousGrammar task
+
+[1/2] Training MLE on ambiguous grammar...
+  Step 4000/20000: Accuracy = 79.00% (best: 79.00%)
+  Step 8000/20000: Accuracy = 80.00% (best: 80.00%)
+  Step 12000/20000: Accuracy = 70.00% (best: 80.00%)
+  Step 16000/20000: Accuracy = 74.00% (best: 80.00%)
+  Step 20000/20000: Accuracy = 62.00% (best: 80.00%)
+MLE Accuracy: 80.00%
+
+[2/2] Training RL (REINFORCE) on ambiguous grammar...
+  Step 4000/20000: Accuracy = 80.00% (best: 80.00%)
+  Step 8000/20000: Accuracy = 75.00% (best: 80.00%)
+  Step 12000/20000: Accuracy = 77.00% (best: 80.00%)
+  Step 16000/20000: Accuracy = 73.00% (best: 80.00%)
+  Step 20000/20000: Accuracy = 76.00% (best: 80.00%)
+RL Accuracy: 80.00%
+
+======================================================================
+AMBIGUOUS GRAMMAR RESULTS
+======================================================================
+Oracle Ceiling: 75.00%
+MLE Accuracy:   80.00%
+RL Accuracy:    80.00%
+RL vs MLE Gap:  0.00%
+
+======================================================================
+INTERPRETATION
+======================================================================
+[SUCCESS] RL achieves ~oracle accuracy (≥90% of ceiling)
+  RL learns the distribution, doesn't just memorize argmax
+[SUCCESS] RL matches MLE (gap ≤10%)
+
+================================================================================
+EXPERIMENT 2: Policy Entropy Analysis
+================================================================================
+
+======================================================================
+POLICY ENTROPY ANALYSIS
+======================================================================
+
+[1/1] Training RL model...
+  Step 4000/20000: Accuracy = 75.00% (best: 75.00%)
+  Step 8000/20000: Accuracy = 72.00% (best: 75.00%)
+  Step 12000/20000: Accuracy = 70.00% (best: 75.00%)
+  Step 16000/20000: Accuracy = 71.00% (best: 75.00%)
+  Step 20000/20000: Accuracy = 77.00% (best: 77.00%)
+
+======================================================================
+ENTROPY ANALYSIS
+======================================================================
+
+Token 0 (AMBIGUOUS):
+  Oracle dist: [0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.5 0.  0.5]
+  Policy dist: [2.3034441e-04 1.7189328e-06 1.4709938e-06 4.7489758e-07 4.0295541e-07
+ 6.3041216e-07 3.6233214e-06 3.2155233e-06 4.7427619e-07 1.4247703e-05
+ 4.2251381e-06 1.0171383e-06 1.0320342e-08 2.2166110e-05 3.4759731e-05
+ 9.9968123e-01]
+  Oracle entropy: 0.693
+  Policy entropy: 0.003
+  KL divergence: 0.697
+
+Token 1 (AMBIGUOUS):
+  Oracle dist: [0.  0.  0.5 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.5 0. ]
+  Policy dist: [3.4258439e-04 2.3256609e-06 3.6685369e-06 3.2116117e-07 6.6297770e-07
+ 1.0743482e-06 8.7301787e-06 2.0208431e-06 2.1778687e-06 8.0230902e-06
+ 5.8911485e-07 1.2314720e-05 1.0069465e-06 1.1263965e-05 9.9951744e-01
+ 8.5834981e-05]
+  Oracle entropy: 0.693
+  Policy entropy: 0.005
+  KL divergence: 0.699
+
+Token 2 (AMBIGUOUS):
+  Oracle dist: [0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.5 0.  0.  0.5 0.  0. ]
+  Policy dist: [3.0669162e-05 1.4329610e-06 6.8892155e-06 4.0356067e-06 9.4479736e-07
+ 2.7520857e-05 6.2074614e-06 4.2278562e-06 7.9735719e-06 1.0563418e-05
+ 9.9862957e-01 1.0072996e-05 7.0807080e-05 1.1824962e-03 2.8867019e-06
+ 3.7685722e-06]
+  Oracle entropy: 0.693
+  Policy entropy: 0.011
+  KL divergence: 0.686
+
+Token 3 (AMBIGUOUS):
+  Oracle dist: [0.  0.  0.  0.5 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.5 0.  0. ]
+  Policy dist: [3.4342356e-05 1.7658174e-06 9.5060905e-06 5.1564775e-06 1.2475939e-06
+ 3.7942169e-05 7.3518845e-06 5.8066253e-06 9.2459850e-06 1.0360979e-05
+ 9.9806005e-01 1.8197668e-05 9.1481503e-05 1.7002834e-03 3.6473166e-06
+ 3.6342026e-06]
+  Oracle entropy: 0.693
+  Policy entropy: 0.015
+  KL divergence: 22.973
+
+Token 4 (AMBIGUOUS):
+  Oracle dist: [0.  0.  0.  0.  0.  0.  0.  0.5 0.  0.  0.5 0.  0.  0.  0.  0. ]
+  Policy dist: [3.5153760e-05 1.9652721e-06 9.5193864e-06 5.7107191e-06 1.2736566e-06
+ 3.7895363e-05 8.3375362e-06 6.4598275e-06 9.7531656e-06 1.0850113e-05
+ 9.9854136e-01 1.5340094e-05 1.2563141e-04 1.1829000e-03 4.4142785e-06
+ 3.4687280e-06]
+  Oracle entropy: 0.693
+  Policy entropy: 0.012
+  KL divergence: 0.713
+
+Token 5 (AMBIGUOUS):
+  Oracle dist: [0.  0.  0.  0.  0.  0.  0.  0.  0.  0.5 0.  0.  0.  0.  0.5 0. ]
+  Policy dist: [6.09777344e-04 2.04147000e-06 2.94496112e-06 2.84787063e-07
+ 5.34693243e-07 8.81323103e-07 7.79064430e-06 2.25051599e-06
+ 1.49351581e-06 6.19876300e-06 3.65516939e-07 9.94610036e-06
+ 6.11031510e-07 1.12385305e-05 9.99215961e-01 1.27759486e-04]
+  Oracle entropy: 0.693
+  Policy entropy: 0.007
+  KL divergence: 0.704
+
+Token 6 (AMBIGUOUS):
+  Oracle dist: [0.  0.  0.  0.  0.  0.5 0.  0.  0.  0.  0.5 0.  0.  0.  0.  0. ]
+  Policy dist: [3.70932321e-05 2.26961947e-06 1.02158738e-05 6.32669980e-06
+ 1.42021713e-06 4.28088169e-05 9.17866237e-06 6.99793100e-06
+ 1.08005634e-05 1.23187483e-05 9.98520911e-01 1.52178645e-05
+ 1.60575713e-04 1.15586841e-03 4.58256773e-06 3.34877950e-06]
+  Oracle entropy: 0.693
+  Policy entropy: 0.012
+  KL divergence: 0.713
+
+Token 7 (AMBIGUOUS):
+  Oracle dist: [0.5 0.  0.5 0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0. ]
+  Policy dist: [5.3239946e-05 1.1316455e-06 4.5650913e-06 2.4064418e-06 6.8377864e-07
+ 2.1464159e-05 4.0304544e-06 2.5464255e-06 5.5168225e-06 6.2055228e-06
+ 9.9947125e-01 5.0284057e-06 6.5866625e-05 3.5189555e-04 1.7104275e-06
+ 2.4541107e-06]
+  Oracle entropy: 0.693
+  Policy entropy: 0.005
+  KL divergence: 23.019
+
+======================================================================
+SUMMARY
+======================================================================
+Average entropy (ambiguous tokens): 0.009
+Average entropy (deterministic tokens): 0.008
+Average KL divergence (ambiguous): 6.275
+
+======================================================================
+INTERPRETATION
+======================================================================
+[FAILURE] Low entropy at ambiguous points (<0.3)
+  Policy has collapsed to argmax
+[FAILURE] High KL divergence (≥1.0)
+  Policy significantly differs from oracle (collapsed?)
+
+
+Results saved to results\phase3_language\week1_ambiguous\ambiguous_results_20260109_143041.json
+
