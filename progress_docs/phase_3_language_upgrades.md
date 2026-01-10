@@ -350,6 +350,382 @@ Neither v1 nor v2 successfully tests compositional generalization. The fundament
 
 ---
 
+## Week 2 Technical Deep-Dive: Problems Encountered & Lessons Learned
+
+### Problem 1: Initial Grammar Implementation Bug (Jan 11, Morning)
+
+**Issue**: Grammar was randomly sampling target suffix on EACH STEP, not at episode initialization.
+
+**Code Location**: [src/environment/compositional_grammar.py:187](src/environment/compositional_grammar.py#L187)
+
+**What Was Happening**:
+```python
+# WRONG: In step() method
+def step(self, predicted_token: int, test_mode: bool = False):
+    valid_suffixes = self.get_correct_suffix(prefix)
+    actual_next = random.choice(valid_suffixes)  # ❌ Random EVERY time!
+```
+
+**Symptom**: Models stuck at ~30% accuracy (slightly above 25% chance) even after training.
+
+**Diagnosis Process**:
+1. Ran debug script showing model predictions
+2. Noticed model predicted valid suffixes but was marked "incorrect"
+3. Discovered that each episode randomly chose which suffix was "correct"
+4. Example: Prefix 0 has valid suffixes [4, 5, 6, 7], but only ONE randomly chosen per episode
+
+**Impact**: Model had only 25% chance of being correct even if it learned the grammar perfectly!
+
+**Fix**:
+```python
+# CORRECT: Store target at reset()
+def reset(self, test_mode: bool = False):
+    composition = random.choice(list(self._train_compositions))
+    self._current_token = composition[0]  # prefix
+    self._target_suffix = composition[1]  # suffix ✓ Store it!
+
+def step(self, predicted_token: int, test_mode: bool = False):
+    actual_next = self._target_suffix  # ✓ Use stored target
+```
+
+**Result**: Training accuracy jumped to 100% immediately.
+
+**Commit**: `149b513` - "Week 2 Complete: Compositional Generalization - RL Matches MLE"
+
+---
+
+### Problem 2: Evaluation Using Sampling Instead of Argmax (Jan 11, Morning)
+
+**Issue**: Evaluation was sampling from model's distribution, not taking argmax.
+
+**Code Location**: [run_compositional_experiments.py:120](run_compositional_experiments.py#L120)
+
+**What Was Happening**:
+```python
+# WRONG: Sampling during evaluation
+logits, _ = model.forward(state_tensor)
+probs = torch.softmax(logits, dim=-1)
+predicted_token = torch.multinomial(probs, 1).item()  # ❌ Stochastic!
+```
+
+**Symptom**: Even after fixing Problem 1, accuracy dropped from intermediate training values to 0%.
+
+**Why This Matters**:
+- During training with multinomial sampling, model might predict correctly by chance
+- During evaluation, sampling again introduces randomness
+- Model might have learned correct ranking but we're not measuring it
+
+**Fix**:
+```python
+# CORRECT: Deterministic evaluation
+logits, _ = model.forward(state_tensor)
+predicted_token = logits.argmax(dim=-1).item()  # ✓ Deterministic
+```
+
+**Result**: Training accuracy became meaningful metric (100%), test still 0% (expected).
+
+---
+
+### Problem 3: Evaluation Intervals Not Triggering (Jan 11, Morning)
+
+**Issue**: Progress output never showed intermediate evaluations during training.
+
+**Code Location**: [run_compositional_experiments.py:87](run_compositional_experiments.py#L87)
+
+**What Was Happening**:
+```python
+# WRONG: Step increment doesn't align with eval_interval
+step += batch_size  # step = 32, 64, 96, ..., 992, 1024
+if step % eval_interval == 0:  # eval_interval = 250
+    evaluate()  # Never triggers! (250, 500, 750, 1000 never hit)
+```
+
+**Symptom**: Training completed silently, no intermediate accuracy reports.
+
+**Diagnosis**:
+- With `batch_size=32` and `eval_interval=250`, `step % 250 == 0` is never true
+- step values: 32, 64, 96, 128, 160, 192, 224, 256...
+- None are divisible by 250!
+
+**Fix**:
+```python
+# CORRECT: Trigger when we cross eval_interval
+if step % eval_interval < batch_size or step >= total_steps:
+    evaluate()
+```
+
+**Alternative Fix** (cleaner):
+```python
+# Track last eval step
+if step - last_eval_step >= eval_interval:
+    evaluate()
+    last_eval_step = step
+```
+
+**Result**: Now see training progress every ~2500 steps.
+
+---
+
+### Problem 4: Week 2 v1 - No Compositional Structure (Jan 11, Afternoon)
+
+**Issue**: Original design had no composition, just memorization.
+
+**Task Design**:
+```
+Grammar: 4 prefixes → 4 suffixes (deterministic 1-to-1)
+Prefix 0 → Suffix 4
+Prefix 1 → Suffix 5
+Prefix 2 → Suffix 6
+Prefix 3 → Suffix 7
+
+Train on 3, test on 1
+```
+
+**Why This Fails**:
+- Each mapping is independent (no shared structure)
+- No reuse of learned components
+- No rule to generalize
+- Just 4 independent facts to memorize
+
+**Result**: Both RL and MLE got 100% train, 0% test (perfect memorization, no transfer).
+
+**Why This Is Not Composition**:
+- SCAN-style composition requires **reusable components**
+- Example: Learn "jump" and "twice" separately, combine for "jump twice"
+- Our task: Learn 4 independent mappings with no overlap
+
+**Lesson**: Need factorized structure where same components appear in multiple contexts.
+
+---
+
+### Problem 5: Week 2 v2 - Ambiguity from Random Splits (Jan 11, Evening)
+
+**Issue**: "Factorized" grammar created ambiguous training data.
+
+**Task Design**:
+```
+Slots: A ∈ {0, 1}, B ∈ {2, 3}
+All sequences: (0,2), (0,3), (1,2), (1,3)
+Random 75/25 split:
+  Train: (0,2), (0,3), (1,3)  ← A=0 appears with BOTH B values!
+  Test: (1,2)
+```
+
+**What Went Wrong**:
+```
+During training:
+  Episode 1: See prefix 0, target is 2
+  Episode 2: See prefix 0, target is 3  ← CONFLICT!
+  Episode 3: See prefix 1, target is 3
+```
+
+**Symptom**: Training accuracy stuck at ~65-70% (model can't memorize contradictory data).
+
+**Diagnosis**:
+1. Ran debug showing model predictions vs targets
+2. Noticed prefix 0 appeared with multiple target suffixes
+3. Realized random split doesn't guarantee deterministic mappings
+4. Each prefix can map to multiple suffixes in training → ambiguous!
+
+**Impact on Different Grammar Sizes**:
+- **2×2 grammar** (4 total, 3 train): ~70% train accuracy (some ambiguity)
+- **3×3 grammar** (9 total, 7 train): ~45% train accuracy (more ambiguity)
+- **6×6 grammar** (36 total, 27 train): ~25% train accuracy (severe ambiguity)
+
+**Why Accuracy Degrades**:
+As grammar size increases, probability that each A value appears with multiple B values increases:
+- 2×2: 3 training pairs, 2 A values → 1-2 pairs per A (low ambiguity)
+- 6×6: 27 training pairs, 6 A values → 4-5 pairs per A (high ambiguity)
+
+**Root Cause**: This recreates the **Week 1 ambiguity problem**!
+- Week 1: Ambiguous grammar where tokens intentionally have 50/50 splits
+- Week 2 v2: Accidentally created ambiguous grammar through random splits
+
+**Why This Isn't Composition Either**:
+Even without ambiguity, "A→B mappings" without a rule are just:
+- Independent associations (A₁→B₁, A₂→B₂, ...)
+- No compositional structure unless there's a **learnable function** f(A) = B
+
+**Lesson**: Random splits of all combinations create ambiguity. Need either:
+1. Carefully crafted splits ensuring each A maps to unique B in training, OR
+2. A task with actual compositional structure (rule-based, not just combinations)
+
+---
+
+### Problem 6: Fundamental Task Design Issue - What Is Composition?
+
+**Core Realization**: Neither v1 nor v2 test compositional generalization.
+
+**What Composition Requires**:
+
+1. **Reusable Components**:
+   - Components appear in multiple contexts
+   - Learning transfers across contexts
+   - Example: Learn "jump" → JUMP and "twice" → REPEAT, combine for "jump twice"
+
+2. **Compositional Rules**:
+   - Output depends on combination of inputs through learnable function
+   - Example: C = f(A, B) where f is XOR, addition, concatenation, etc.
+   - NOT: Random independent mappings
+
+3. **Systematic Generalization**:
+   - Novel combinations should be predictable from seen parts
+   - Example: Seen "jump twice", "walk left" → Predict "jump left"
+
+**What We Actually Tested**:
+
+**Week 2 v1**: Independent Facts
+```
+A₀ → B₀  (fact 1)
+A₁ → B₁  (fact 2)
+A₂ → B₂  (fact 3)
+A₃ → B₃  (fact 4, held out)
+
+No shared structure between facts!
+```
+
+**Week 2 v2**: Random Associations + Ambiguity
+```
+All A×B pairs, random split
+→ Some A values map to multiple B values
+→ Ambiguous + no compositional rule
+```
+
+**What Would Actually Test Composition**:
+
+**Option 1: Rule-Based Composition**
+```
+Task: Predict C given (A, B)
+Rule: C = (A + B) mod K
+
+Train: (0,0)→0, (0,1)→1, (1,0)→1
+Test: (1,1)→0
+
+Model must learn the XOR-like rule to generalize.
+```
+
+**Option 2: Systematic Combinations (True SCAN-style)**
+```
+Components:
+  Actions: {jump, walk, run}
+  Modifiers: {left, right, twice}
+
+Compositions:
+  "jump left" → [LTURN, JUMP]
+  "walk twice" → [WALK, WALK]
+
+Train: jump left, walk twice, run left, jump twice
+Test: walk left ← Can model compose walk + left?
+
+Key: Same action with different modifiers, same modifier with different actions
+```
+
+**Option 3: Multi-Step Dependencies**
+```
+Sequence: [A, B, C]
+Rule: C depends on (A, B) pair
+
+Train sequences:
+  [x, a, result₁]
+  [x, b, result₂]
+  [y, a, result₃]
+
+Test: [y, b, ?]
+
+Model must learn how A and B jointly determine C.
+```
+
+---
+
+### Lessons Learned: Principles for Compositional Tasks
+
+1. **Explicit Structure**: Composition requires explicit reusable structure, not random combinations
+
+2. **Avoid Accidental Ambiguity**: Random splits can create ambiguity - design splits carefully
+
+3. **Rule > Memorization**: Tasks need learnable rules (functions) relating inputs to outputs
+
+4. **Multiple Contexts**: Each component must appear in >1 context to test reuse
+
+5. **Clear Success Criterion**: Define what "compositional generalization" means precisely:
+   - Better than chance on held-out combinations?
+   - Match training accuracy on test?
+   - Above threshold (e.g., >50%) on test?
+
+6. **Start Simple**: Minimal task that unambiguously tests composition (e.g., 2-bit XOR) before scaling
+
+---
+
+### Current Status: What We Have
+
+**Week 1 (Strong Result)**:
+- Clean demonstration of RL's distributional collapse
+- RL learns structure (accuracy 80%) but not uncertainty (entropy 0.009)
+- Explains why MLE/pretraining exists
+
+**Week 2 (Supporting Evidence)**:
+- RL = MLE on deterministic mappings (both 100% train)
+- Neither generalizes without compositional structure (both 0% test)
+- Shows Week 1's collapse doesn't hurt deterministic learning
+
+**Together**: Week 1 + Week 2 tell coherent story:
+- RL learns WHAT follows WHAT (structure) perfectly
+- RL doesn't learn HOW LIKELY each option is (uncertainty)
+- For deterministic tasks, this doesn't matter (RL = MLE)
+- For stochastic tasks, this is critical (RL fails to maintain distributions)
+
+---
+
+### What True Compositional Generalization Would Add
+
+**If we successfully implement Week 2 v3 with proper composition**:
+
+**Scenario 1: RL Generalizes** (best case)
+- Shows RL learns compositional rules despite distributional collapse
+- Strengthens claim: "RL learns structure, MLE learns distributions"
+- Very strong paper
+
+**Scenario 2: RL Matches MLE** (good case)
+- Shows RL and MLE both learn (or don't learn) compositional structure
+- Supports parity claim
+- Strong paper
+
+**Scenario 3: RL Fails, MLE Succeeds** (revealing case)
+- Shows distributional collapse DOES hurt compositional generalization
+- Identifies specific limitation
+- Still publishable (honest negative result)
+
+**All outcomes are scientifically valuable.**
+
+---
+
+### Recommendations for Future Work
+
+**If pursuing Week 2 v3**:
+
+1. **Use explicit rule-based task**:
+   - XOR-style: C = (A XOR B)
+   - Parity: C = (A + B) mod K
+   - Simple enough to learn, complex enough to test composition
+
+2. **Ensure deterministic training data**:
+   - Each input combination has ONE correct output
+   - No ambiguity in training set
+
+3. **Start minimal**:
+   - 2×2 XOR (4 examples, hold out 1)
+   - Verify models CAN learn the rule before testing generalization
+
+4. **Clear evaluation**:
+   - Training accuracy should reach ~100% (rule is learnable)
+   - Test accuracy > chance indicates compositional understanding
+
+**Alternative: Proceed to Week 3**:
+
+Week 1 alone is publishable. Week 3 (representation analysis) could show that despite behavioral differences, RL and MLE learn similar representations - supporting the "structure vs. uncertainty" separation.
+
+---
+
 ## Success Criteria Summary
 
 ### Week 1: Ambiguous Grammar
