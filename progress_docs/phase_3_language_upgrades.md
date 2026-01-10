@@ -299,11 +299,54 @@ The task as designed is pure memorization (4 independent facts), not composition
 - Experiment script: [run_compositional_experiments.py](run_compositional_experiments.py)
 - Results: `results/phase3_language/week2_compositional/compositional_results_20260111_022412.json`
 
-**Status**: ✅ Week 2 experiments complete
+### Week 2 v2: Factorized Composition (Jan 11, 2026 - Redesign)
+
+**Problem Identified**: Week 2 v1 task had no compositional structure - just 4 independent facts to memorize.
+
+**New Design**: True factorized structure with independent slots:
+- **Slot A**: num_a_values choices (e.g., 0, 1)
+- **Slot B**: num_b_values choices (e.g., 2, 3)
+- **Sequences**: A→B predictions
+- **Train/Test**: Hold out specific (A, B) combinations
+
+**Implementation**: [src/environment/factorized_grammar.py](src/environment/factorized_grammar.py)
+
+**Results (2x2 grammar)**:
+- Training: MLE 71%, RL 73%
+- Test: MLE 0%, RL 0%
+
+**Results (3x3 grammar)**:
+- Training: MLE 47%, RL 43%
+- Test: MLE 0%, RL 0%
+
+**Results (6x6 grammar)**:
+- Training: MLE 25%, RL 32%
+- Test: MLE 0%, RL 0%
+
+**Problem Discovered**: Random 75/25 split creates **ambiguity** - each A value appears with multiple B values in training, making the task underdetermined. Training accuracy degrades as grammar size increases due to increasing ambiguity.
+
+**Key Insight**:
+This task formulation doesn't test composition - it tests memorization of ambiguous mappings. True composition requires:
+1. A learnable RULE relating inputs to outputs
+2. NOT just random combinations of independent factors
+
+**Outcome**: **Task design limitation identified**
+
+Neither v1 nor v2 successfully tests compositional generalization. The fundamental issue: "A→B mappings" don't contain compositional structure unless there's a rule relating them.
+
+**Files**:
+- Factorized grammar: [src/environment/factorized_grammar.py](src/environment/factorized_grammar.py)
+- Experiment script: [run_factorized_experiments.py](run_factorized_experiments.py)
+- Results: `results/phase3_language/week2_factorized/`
+
+**Status**: ✅ Week 2 v2 experiments complete, task limitation identified
 
 **Next Steps**:
-1. Week 3: Representation analysis to see if RL and MLE learn similar representations despite behavioral differences
-2. Consider more complex compositional tasks (multi-step sequences) for future work
+1. **Option A**: Design Week 2 v3 with true compositional rule (e.g., C = f(A, B))
+2. **Option B**: Accept Week 2 limitation, proceed to Week 3 (representation analysis)
+3. **Option C**: Report Weeks 1-2 as-is: Week 1 shows RL limitation (distributional collapse), Week 2 shows RL=MLE on simple tasks
+
+**Recommendation**: Proceed with Option B or C. Week 1 alone is a strong result. Week 2's null result (RL=MLE on memorization) supports the claim without requiring composition.
 
 ---
 
