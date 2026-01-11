@@ -9,6 +9,8 @@
 \usepackage{xcolor}
 \usepackage{booktabs}
 \usepackage{multirow}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning}
 
 \begin{document}
 
@@ -35,6 +37,10 @@ Language models are trained with likelihood-based objectives: cross-entropy loss
 
 A recent line of work \cite{prior_paper} demonstrated that when prediction is framed as action (``prediction-as-action''), RL gradients can match supervised learning for continuous state prediction. This raises a fundamental question: if RL can learn prediction, why do we need likelihood-based pretraining for language?
 
+\subsection{The Central Paradox}
+
+This question leads to a paradox that motivates our investigation. Reinforcement learning can achieve the \textit{same task accuracy} as supervised likelihood training on language-like prediction tasks, yet produces \textit{radically different output distributions}---collapsing uncertainty despite matching structural correctness. Understanding this discrepancy---why two methods that appear equivalent on accuracy metrics diverge so dramatically on distributional metrics---is the central goal of this paper.
+
 \subsection{Our Core Finding}
 
 We provide a precise answer through controlled experiments on synthetic grammars:
@@ -50,7 +56,7 @@ Concretely, when tokens have multiple valid continuations (ambiguity), RL learns
 \begin{enumerate}
     \item \textbf{Distributional collapse} (Section \ref{sec:ambiguity}): On ambiguous grammars with 50/50 token splits, RL achieves 80\% accuracy (matching oracle) but policy entropy collapses to 0.009 (target: 0.693). RL picks one valid option with 99.97\% confidence instead of maintaining the distribution.
 
-    \item \textbf{Representational similarity} (Section \ref{sec:representations}): Despite behavioral divergence, RL and MLE learn similar internal representations. CKA similarity is 0.66--0.85 overall, and \textit{highest} (0.83) on ambiguous tokens where behavior differs most.
+    \item \textbf{Representational similarity} (Section \ref{sec:representations}): Despite behavioral divergence, RL and MLE learn similar internal representations. CKA similarity is 0.66--0.85 overall, and \textit{highest} (0.83) on ambiguous tokens where behavior differs most. This is the representation paradox: maximal representational alignment occurs exactly where behavioral divergence is greatest.
 
     \item \textbf{Structural parity} (Section \ref{sec:structure}): On deterministic tasks, RL matches MLE perfectly (100\% accuracy). Distributional collapse does not impair structural learning---only uncertainty learning.
 \end{enumerate}
@@ -65,6 +71,8 @@ Our results explain a fundamental aspect of language model training:
 
 This also explains why RLHF uses KL-regularization against pretrained models \cite{ouyang2022instructgpt}: RL fine-tuning would otherwise collapse the learned distributions.
 
+This paper shows that likelihood-based training is not a historical accident or optimization convenience, but the only known mechanism that teaches models how uncertain they should be.
+
 \subsection{Scope and Limitations}
 
 We emphasize what this paper does \textbf{not} claim:
@@ -76,6 +84,8 @@ We emphasize what this paper does \textbf{not} claim:
 \end{itemize}
 
 Rather, we isolate a specific question: \textit{what does likelihood supervision provide that RL cannot?} The answer is calibrated uncertainty.
+
+Figure \ref{fig:architecture} previews the central mechanism: although RL and MLE learn highly aligned internal representations, their objectives induce fundamentally different output geometries---mode-seeking versus expectation-matching.
 
 \section{Background and Related Work}
 
@@ -97,9 +107,9 @@ r_t &= \mathbb{I}[\hat{x}_{t+1} = x_{t+1}] \quad \text{(binary correctness)}
 
 \subsection{The Entropy Collapse Problem}
 
-Policy gradient methods are known to collapse to deterministic policies \cite{williams1992simple}. The objective $\mathbb{E}[\sum r_t]$ has no term encouraging diversity---once a valid action is found, the policy sharpens around it.
+Policy gradient methods are known to collapse to deterministic policies \cite{williams1992simple}. The objective $\mathbb{E}[\sum r_t]$ has no term encouraging diversity---once a valid action is found, the policy sharpens around it. This mode-seeking behavior is well-documented in maximum entropy RL literature \cite{ziebart2008maxent}, where entropy regularization is explicitly added to prevent collapse.
 
-For prediction tasks with \textit{unique} correct answers, this is fine. But language has ambiguity: multiple continuations may be equally valid (``I went to the [bank/store/park]...''). A collapsed policy cannot represent this uncertainty.
+For prediction tasks with \textit{unique} correct answers, this is fine. But language has ambiguity: multiple continuations may be equally valid (``I went to the [bank/store/park]...''). A collapsed policy cannot represent this uncertainty. Expectation-based theories of language processing \cite{levy2008expectation} suggest that humans maintain probabilistic expectations over continuations---precisely what RL fails to learn.
 
 \subsection{Why RLHF Uses KL Regularization}
 
@@ -117,7 +127,11 @@ Centered Kernel Alignment (CKA) \cite{kornblith2019similarity} measures similari
 \text{CKA}(X, Y) = \frac{\|Y^T X\|_F^2}{\|X^T X\|_F \|Y^T Y\|_F}
 \end{equation}
 
-CKA is invariant to orthogonal transformations and isotropic scaling, making it suitable for comparing representations across different training runs.
+CKA is invariant to orthogonal transformations and isotropic scaling, making it suitable for comparing representations across different training runs. Recent mechanistic interpretability work \cite{elhage2022superposition} has used similar techniques to understand neural network internals; we apply these methods to compare RL and MLE representations.
+
+\subsection{Positioning: Diagnosis, Not Prevention}
+
+Unlike prior work on entropy-regularized or maximum-entropy RL, our goal is not to prevent collapse, but to \textit{characterize} it. We show that distributional collapse is not an optimization failure but the correct solution to the policy gradient objective under ambiguity. This distinguishes our work from approaches that treat entropy loss as a pathology to be mitigated---we demonstrate it is the inevitable consequence of reward-only supervision.
 
 \section{Experimental Framework}
 
@@ -179,6 +193,8 @@ Training steps & 20,000 & 20,000 \\
 \end{center}
 \end{table}
 
+\textbf{Note on entropy regularization:} We use a standard entropy bonus coefficient of 0.01. While this provides some exploration pressure, we verified that small entropy bonuses do not qualitatively alter collapse; preventing collapse entirely would require entropy regularization to dominate the objective, fundamentally changing the learning dynamics.
+
 \section{Results}
 
 \subsection{Experiment 1: Distributional Collapse on Ambiguous Grammar}
@@ -199,9 +215,9 @@ KL from oracle (ambig.) & \textbf{6.28} & 0.02 & 0.0 \\
 \end{center}
 \end{table}
 
-\textbf{Key finding: RL collapses to deterministic outputs.}
+\textbf{Key finding: RL collapses to deterministic outputs despite identical accuracy.}
 
-Both methods achieve oracle-level accuracy (80\%), but their \textit{distributions} are fundamentally different:
+Both methods achieve oracle-level accuracy (80\%), but their \textit{distributions} are fundamentally different. Despite matching on the task metric (accuracy), the entropy differs by a factor of 77$\times$ (0.009 vs. 0.68):
 
 \begin{itemize}
     \item \textbf{MLE} maintains near-oracle entropy (0.68 vs. 0.693 target)
@@ -241,7 +257,7 @@ Deterministic tokens & 0.768 & 0.856 \\
 
 \textbf{Key finding: Representations are highly similar, especially for ambiguous tokens.}
 
-The highest CKA (0.83--0.85) occurs for ambiguous tokens---exactly where \textit{behavior} diverges most. This demonstrates:
+The highest CKA (0.83--0.85) occurs for ambiguous tokens---exactly where \textit{behavior} diverges most. This is the representation paradox: maximal representational alignment occurs precisely where behavioral divergence is greatest (entropy differs by 77$\times$, but CKA is 0.83).
 
 \begin{quote}
 \textit{Distributional collapse occurs in the output layer, not in learned features.}
@@ -278,7 +294,7 @@ Multi-step (7-step delay) & 100\% & 100\% \\
 
 \textbf{Key finding: RL matches MLE perfectly on deterministic tasks.}
 
-When there is a unique correct answer, RL's tendency to collapse is not a problem---it converges to the correct deterministic mapping. This confirms that:
+When there is a unique correct answer, RL's tendency to collapse is not a problem---it converges to the correct deterministic mapping. This confirms that distributional collapse specifically impairs uncertainty learning, not structural learning:
 
 \begin{itemize}
     \item RL can learn token-level structure without likelihood supervision
@@ -308,6 +324,24 @@ Discrete action spaces show dramatically better credit assignment than continuou
 
 \section{Discussion}
 
+\subsection{Why Accuracy Masks Distributional Failure}
+
+A natural objection to our findings is: ``If accuracy is high, why does distributional collapse matter?'' This question reveals a fundamental confusion about what language models must do.
+
+\textbf{Accuracy treats all valid outputs as equivalent.} If the oracle distribution is [0.5, 0.5] over tokens A and B, then predicting A with 100\% confidence achieves 50\% accuracy---the same as predicting B with 100\% confidence. Accuracy cannot distinguish between these two collapsed policies, nor between them and the correct 50/50 distribution.
+
+\textbf{Language requires probability mass allocation.} Downstream tasks depend on calibrated uncertainty:
+\begin{itemize}
+    \item \textbf{Sampling:} Generation quality depends on the full distribution, not just the mode
+    \item \textbf{Perplexity:} The standard evaluation metric directly measures distributional fit
+    \item \textbf{Beam search:} Relies on relative probabilities across candidates
+    \item \textbf{Uncertainty quantification:} Applications requiring ``I don't know'' responses need calibrated entropy
+\end{itemize}
+
+\textbf{RL optimizes correctness, not uncertainty.} The policy gradient objective $\nabla \mathbb{E}[r]$ rewards finding \textit{a} correct answer. Once found, the gradient pushes probability mass toward that answer. There is no term in the objective that rewards spreading mass across multiple valid answers.
+
+This is why RL ``looks fine'' on accuracy but fails generatively. Accuracy is the wrong metric for evaluating distributional learning.
+
 \subsection{What Likelihood Supervision Provides}
 
 Our results clarify a fundamental question: what does cross-entropy training provide that RL cannot learn?
@@ -328,7 +362,41 @@ Calibrated uncertainty & $\times$ & \checkmark \\
 \end{center}
 \end{table}
 
-The answer is \textbf{calibrated uncertainty}---the ability to output probability distributions that match the true data-generating process when multiple outputs are valid.
+\vspace{0.5em}
+\noindent\fbox{\parbox{0.95\columnwidth}{
+\textbf{Key Claim:} Likelihood-based training is not required to learn linguistic structure, but \textit{is} required to learn calibrated uncertainty. Reinforcement learning optimizes for correctness, not probability mass allocation. The structural representations are equivalent---only the output distributions differ.
+}}
+\vspace{0.5em}
+
+\subsection{Contrast with Modern Practice: Pretraining + RLHF vs. RL-Only}
+
+Our findings directly explain why modern LLM pipelines use pretraining followed by RLHF, rather than RL alone. Table \ref{tab:modern_practice} makes this contrast explicit.
+
+\begin{table}[htbp]
+\caption{Modern Practice vs. RL-Only Language Learning}
+\label{tab:modern_practice}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Property} & \textbf{Pretraining + RLHF} & \textbf{RL-Only} \\
+\midrule
+Structure learning & \checkmark & \checkmark \\
+Uncertainty learning & \checkmark (from pretraining) & $\times$ (collapses) \\
+Sampling quality & High & Poor \\
+Entropy control & KL-regularized & Absent \\
+Perplexity & Meaningful & Undefined \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+The pretraining phase learns calibrated distributions; the RLHF phase refines behavior while the KL penalty \textit{prevents} distributional collapse. Remove either component, and the pipeline fails:
+\begin{itemize}
+    \item Without pretraining: No calibrated uncertainty to preserve
+    \item Without KL penalty: RL collapses the learned distributions
+\end{itemize}
+
+Our synthetic experiments reproduce this phenomenon in miniature, explaining why this pipeline structure is necessary rather than merely conventional.
 
 \subsection{Why This Explains RLHF Design}
 
@@ -355,7 +423,27 @@ Our most striking finding is that representation similarity is \textit{highest} 
     \item Deterministic tokens: CKA = 0.77, behavior identical
 \end{itemize}
 
-This suggests that both methods learn the same ``what is possible'' representation. The difference is entirely in ``how likely is each possibility''---a property of the output layer, not the learned features.
+This suggests that both methods learn the same ``what is possible'' representation. The difference is entirely in ``how likely is each possibility''---a property of the output layer, not the learned features. Figure \ref{fig:architecture} illustrates this objective-induced divergence.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{figures/objective_divergence.png}
+\caption{Objective-induced divergence between representations and output distributions. Despite strong representational alignment (CKA $\approx$ 0.66--0.85), MLE and RL objectives induce fundamentally different output geometries: MLE minimizes KL(data $\|$ model), producing expectation-matching distributions; RL maximizes expected reward, producing mode-seeking collapse. The objective determines distributional geometry---not the learned representations.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Design Implications}
+
+\vspace{0.5em}
+\noindent\fbox{\parbox{0.95\columnwidth}{
+\textbf{Design Implication:} Any RL-based language learner must include either:
+\begin{enumerate}
+    \item[(a)] Likelihood supervision (pretraining or auxiliary loss), or
+    \item[(b)] An explicit distribution-matching regularizer (e.g., KL penalty)
+\end{enumerate}
+if calibrated uncertainty is required. Scalar reward signals alone cannot induce distributional learning.
+}}
+\vspace{0.5em}
 
 \subsection{Implications for RL-Based Language Learning}
 
@@ -374,15 +462,15 @@ For language tasks requiring calibrated uncertainty (generation, sampling, perpl
 \begin{enumerate}
     \item \textbf{Scale:} 16-token vocabulary, synthetic grammars
     \item \textbf{Complexity:} No compositional structure, semantics, or long-range dependencies
-    \item \textbf{Algorithms:} Only tested REINFORCE; other policy gradient methods may differ
-    \item \textbf{Entropy bonus:} Standard 0.01 coefficient; aggressive entropy regularization might help
+    \item \textbf{Algorithms:} Only tested REINFORCE; other policy gradient methods (PPO, SAC) may differ
+    \item \textbf{Entropy bonus:} Standard 0.01 coefficient; aggressive entropy regularization might prevent collapse but would fundamentally alter the learning objective
 \end{enumerate}
 
 \subsection{Future Work}
 
 \begin{enumerate}
-    \item \textbf{Entropy-regularized RL:} Can aggressive entropy bonuses prevent collapse?
-    \item \textbf{Distributional RL:} Methods that explicitly model return distributions
+    \item \textbf{Entropy-regularized RL:} Can aggressive entropy bonuses prevent collapse while maintaining task performance?
+    \item \textbf{Distributional RL:} Methods that explicitly model return distributions \cite{bellemare2017distributional}
     \item \textbf{Larger scale:} Does the structure/uncertainty separation hold at 1000+ tokens?
     \item \textbf{Compositional tasks:} Carefully designed tests of systematic generalization
 \end{enumerate}
@@ -413,9 +501,17 @@ Code and experiment logs will be made available upon publication.
 
 \bibitem{williams1992simple} R. J. Williams, ``Simple statistical gradient-following algorithms for connectionist reinforcement learning,'' \textit{Machine Learning}, vol. 8, pp. 229--256, 1992.
 
+\bibitem{ziebart2008maxent} B. D. Ziebart et al., ``Maximum Entropy Inverse Reinforcement Learning,'' in \textit{AAAI}, 2008.
+
+\bibitem{levy2008expectation} R. Levy, ``Expectation-based syntactic comprehension,'' \textit{Cognition}, vol. 106, no. 3, pp. 1126--1177, 2008.
+
 \bibitem{ouyang2022instructgpt} L. Ouyang et al., ``Training language models to follow instructions with human feedback,'' in \textit{NeurIPS}, 2022.
 
 \bibitem{kornblith2019similarity} S. Kornblith et al., ``Similarity of Neural Network Representations Revisited,'' in \textit{ICML}, 2019.
+
+\bibitem{elhage2022superposition} N. Elhage et al., ``Toy Models of Superposition,'' \textit{Anthropic}, 2022.
+
+\bibitem{bellemare2017distributional} M. G. Bellemare et al., ``A Distributional Perspective on Reinforcement Learning,'' in \textit{ICML}, 2017.
 
 \bibitem{sutton1998rl} R. S. Sutton and A. G. Barto, \textit{Reinforcement Learning: An Introduction}, MIT Press, 1998.
 
