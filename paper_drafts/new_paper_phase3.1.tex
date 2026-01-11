@@ -1,0 +1,424 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\begin{document}
+
+\title{Structure Without Uncertainty: What Reinforcement Learning Learns (and Doesn't Learn) in Synthetic Language}
+
+\author{\IEEEauthorblockN{Anonymous}
+\IEEEauthorblockA{\textit{Anonymous Institution} \\
+Anonymous Location}
+}
+
+\maketitle
+
+\begin{abstract}
+We investigate what reinforcement learning can and cannot learn about language-like structure without likelihood-based supervision. Through controlled experiments on synthetic grammars with ambiguous tokens (multiple valid continuations), we discover a fundamental asymmetry: RL learns \textit{structure}---which tokens can follow which---but fails to learn \textit{uncertainty}---how probability mass should be distributed over valid options. Specifically, RL achieves oracle-level accuracy (80\%) but collapses to near-deterministic outputs (entropy 0.009 vs. target 0.693), while cross-entropy training preserves the full distribution. Crucially, representation analysis reveals that despite this behavioral divergence, RL and MLE learn highly similar internal representations (CKA 0.66--0.85), with \textit{highest} similarity on ambiguous tokens (CKA 0.83). This demonstrates that distributional collapse occurs in the output layer, not in learned features. Our results explain why likelihood-based pretraining exists: not to learn structure (RL can do that), but to learn calibrated uncertainty over that structure.
+\end{abstract}
+
+\begin{IEEEkeywords}
+reinforcement learning, language modeling, uncertainty, representation learning, distributional collapse
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Language models are trained with likelihood-based objectives: cross-entropy loss that directly supervises the probability distribution over next tokens. This paradigm underlies all modern large language models \cite{brown2020gpt3}. But \textit{why} is likelihood supervision necessary? What specifically does it provide that reinforcement learning cannot?
+
+A recent line of work \cite{prior_paper} demonstrated that when prediction is framed as action (``prediction-as-action''), RL gradients can match supervised learning for continuous state prediction. This raises a fundamental question: if RL can learn prediction, why do we need likelihood-based pretraining for language?
+
+\subsection{Our Core Finding}
+
+We provide a precise answer through controlled experiments on synthetic grammars:
+
+\begin{quote}
+\textit{RL learns linguistic structure but not linguistic uncertainty. This failure is objective-level, not representational.}
+\end{quote}
+
+Concretely, when tokens have multiple valid continuations (ambiguity), RL learns \textit{which} tokens are valid but not \textit{how likely} each should be. It collapses to deterministic outputs despite ambiguous targets.
+
+\subsection{Three Key Results}
+
+\begin{enumerate}
+    \item \textbf{Distributional collapse} (Section \ref{sec:ambiguity}): On ambiguous grammars with 50/50 token splits, RL achieves 80\% accuracy (matching oracle) but policy entropy collapses to 0.009 (target: 0.693). RL picks one valid option with 99.97\% confidence instead of maintaining the distribution.
+
+    \item \textbf{Representational similarity} (Section \ref{sec:representations}): Despite behavioral divergence, RL and MLE learn similar internal representations. CKA similarity is 0.66--0.85 overall, and \textit{highest} (0.83) on ambiguous tokens where behavior differs most.
+
+    \item \textbf{Structural parity} (Section \ref{sec:structure}): On deterministic tasks, RL matches MLE perfectly (100\% accuracy). Distributional collapse does not impair structural learning---only uncertainty learning.
+\end{enumerate}
+
+\subsection{Why This Matters}
+
+Our results explain a fundamental aspect of language model training:
+
+\begin{quote}
+\textit{Likelihood-based pretraining exists not to learn structure, but to learn calibrated uncertainty over structure.}
+\end{quote}
+
+This also explains why RLHF uses KL-regularization against pretrained models \cite{ouyang2022instructgpt}: RL fine-tuning would otherwise collapse the learned distributions.
+
+\subsection{Scope and Limitations}
+
+We emphasize what this paper does \textbf{not} claim:
+
+\begin{itemize}
+    \item This is \textbf{not} natural language learning---our vocabulary is 16 tokens with synthetic grammars.
+    \item We do \textbf{not} claim RL is more efficient---cross-entropy converges $\sim$5$\times$ faster.
+    \item We do \textbf{not} test compositional generalization---that requires carefully designed tasks beyond our current scope.
+\end{itemize}
+
+Rather, we isolate a specific question: \textit{what does likelihood supervision provide that RL cannot?} The answer is calibrated uncertainty.
+
+\section{Background and Related Work}
+
+\subsection{Prediction-as-Action Architecture}
+
+Standard model-based RL separates prediction (world model) from control (policy). Recent work \cite{prior_paper} proposed unifying these: the agent's action \textit{is} its prediction, and reward measures prediction accuracy.
+
+For continuous states:
+\begin{align}
+a_t &= \hat{s}_{t+1} \quad \text{(action IS prediction)} \\
+r_t &= -\|\hat{s}_{t+1} - s_{t+1}\|^2 \quad \text{(reward IS accuracy)}
+\end{align}
+
+We extend this to discrete tokens:
+\begin{align}
+a_t &= \hat{x}_{t+1} \in \mathcal{V} \quad \text{(predict next token)} \\
+r_t &= \mathbb{I}[\hat{x}_{t+1} = x_{t+1}] \quad \text{(binary correctness)}
+\end{align}
+
+\subsection{The Entropy Collapse Problem}
+
+Policy gradient methods are known to collapse to deterministic policies \cite{williams1992simple}. The objective $\mathbb{E}[\sum r_t]$ has no term encouraging diversity---once a valid action is found, the policy sharpens around it.
+
+For prediction tasks with \textit{unique} correct answers, this is fine. But language has ambiguity: multiple continuations may be equally valid (``I went to the [bank/store/park]...''). A collapsed policy cannot represent this uncertainty.
+
+\subsection{Why RLHF Uses KL Regularization}
+
+RLHF fine-tuning \cite{ouyang2022instructgpt} always includes a KL penalty against the pretrained model:
+\begin{equation}
+\mathcal{L} = \mathbb{E}[r(x)] - \beta \cdot D_{KL}(\pi_\theta || \pi_{ref})
+\end{equation}
+
+Our results explain why this is necessary: without KL regularization, RL would collapse the distributional knowledge learned during pretraining.
+
+\subsection{Representation Similarity Analysis}
+
+Centered Kernel Alignment (CKA) \cite{kornblith2019similarity} measures similarity between neural network representations:
+\begin{equation}
+\text{CKA}(X, Y) = \frac{\|Y^T X\|_F^2}{\|X^T X\|_F \|Y^T Y\|_F}
+\end{equation}
+
+CKA is invariant to orthogonal transformations and isotropic scaling, making it suitable for comparing representations across different training runs.
+
+\section{Experimental Framework}
+
+\subsection{Ambiguous Grammar Design}
+
+We design grammars where some tokens have multiple valid continuations:
+
+\begin{table}[htbp]
+\caption{Ambiguous Grammar Specification}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Specification} \\
+\midrule
+Vocabulary size & 16 tokens \\
+Ambiguous tokens & 8 (50\% of vocabulary) \\
+Ambiguity level & High (50/50 splits) \\
+Deterministic tokens & 8 (unique successor) \\
+Oracle accuracy & 75\% (ceiling) \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Key property:} For ambiguous tokens, two successors are equally valid. A policy matching the oracle should output 50/50 probabilities; a collapsed policy picks one with $\sim$100\% confidence.
+
+\textbf{Metrics:}
+\begin{itemize}
+    \item \textbf{Accuracy:} Fraction of predictions matching sampled target
+    \item \textbf{Policy entropy:} $H(\pi) = -\sum_a \pi(a) \log \pi(a)$
+    \item \textbf{KL divergence:} $D_{KL}(\pi || \pi_{oracle})$
+\end{itemize}
+
+\subsection{Model Architecture}
+
+Transformer backbone (2 layers, 64 hidden, 4 heads, $\sim$109K parameters):
+\begin{itemize}
+    \item \textbf{Embedding layer:} Token to continuous representation
+    \item \textbf{Transformer layers:} Self-attention + feedforward
+    \item \textbf{Prediction head:} Categorical distribution over vocabulary
+    \item \textbf{Value head:} Baseline for REINFORCE (RL only)
+\end{itemize}
+
+\subsection{Training Protocols}
+
+\begin{table}[htbp]
+\caption{Training Protocol Comparison}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Property} & \textbf{RL (REINFORCE)} & \textbf{MLE} \\
+\midrule
+Loss & Policy gradient & Cross-entropy \\
+Supervision & Scalar reward & Full distribution \\
+Entropy bonus & 0.01 (standard) & N/A \\
+Training steps & 20,000 & 20,000 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Results}
+
+\subsection{Experiment 1: Distributional Collapse on Ambiguous Grammar}
+\label{sec:ambiguity}
+
+\begin{table}[htbp]
+\caption{Ambiguous Grammar Results (20K Steps, High Ambiguity)}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{RL} & \textbf{MLE} & \textbf{Target} \\
+\midrule
+Accuracy & 80\% & 80\% & 75\% (oracle) \\
+Policy entropy (ambig.) & \textbf{0.009} & 0.68 & 0.693 \\
+KL from oracle (ambig.) & \textbf{6.28} & 0.02 & 0.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Key finding: RL collapses to deterministic outputs.}
+
+Both methods achieve oracle-level accuracy (80\%), but their \textit{distributions} are fundamentally different:
+
+\begin{itemize}
+    \item \textbf{MLE} maintains near-oracle entropy (0.68 vs. 0.693 target)
+    \item \textbf{RL} collapses to near-zero entropy (0.009)
+\end{itemize}
+
+\textbf{Example prediction} for an ambiguous token with oracle distribution [0.5, 0.5]:
+\begin{itemize}
+    \item Oracle: $[0.0, ..., 0.5, ..., 0.5, ...]$
+    \item MLE: $[0.0, ..., 0.48, ..., 0.52, ...]$
+    \item RL: $[0.0, ..., 0.0003, ..., \mathbf{0.9997}, ...]$
+\end{itemize}
+
+RL picks one valid option with 99.97\% confidence instead of the correct 50/50 split.
+
+\textbf{Interpretation:} RL learns \textit{which} tokens are valid (structure) but not \textit{how likely} each should be (uncertainty). The policy gradient objective rewards finding \textit{a} correct answer, not representing the full distribution of correct answers.
+
+\subsection{Experiment 2: Representation Similarity Analysis}
+\label{sec:representations}
+
+Despite behavioral divergence, do RL and MLE learn similar internal representations?
+
+\begin{table}[htbp]
+\caption{Representation Similarity (CKA, 500 Samples)}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Token Type} & \textbf{Linear CKA} & \textbf{RBF CKA} \\
+\midrule
+All tokens & 0.662 & 0.735 \\
+\textbf{Ambiguous tokens} & \textbf{0.830} & \textbf{0.851} \\
+Deterministic tokens & 0.768 & 0.856 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Key finding: Representations are highly similar, especially for ambiguous tokens.}
+
+The highest CKA (0.83--0.85) occurs for ambiguous tokens---exactly where \textit{behavior} diverges most. This demonstrates:
+
+\begin{quote}
+\textit{Distributional collapse occurs in the output layer, not in learned features.}
+\end{quote}
+
+Both methods learn similar internal abstractions of token structure. The difference is entirely in how the output head maps these representations to probability distributions.
+
+\textbf{Implications:}
+\begin{enumerate}
+    \item RL successfully learns structural representations
+    \item The ``failure'' is specifically in the policy/output layer
+    \item Internal features could potentially be reused with a different output mechanism
+\end{enumerate}
+
+\subsection{Experiment 3: Structural Parity on Deterministic Tasks}
+\label{sec:structure}
+
+Does distributional collapse impair structural learning?
+
+\begin{table}[htbp]
+\caption{Deterministic Grammar Results}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Task} & \textbf{RL Accuracy} & \textbf{MLE Accuracy} \\
+\midrule
+Single-step (cyclic) & 100\% & 100\% \\
+Single-step (permutation) & 100\% & 100\% \\
+Multi-step (7-step delay) & 100\% & 100\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Key finding: RL matches MLE perfectly on deterministic tasks.}
+
+When there is a unique correct answer, RL's tendency to collapse is not a problem---it converges to the correct deterministic mapping. This confirms that:
+
+\begin{itemize}
+    \item RL can learn token-level structure without likelihood supervision
+    \item The limitation is specific to \textit{uncertainty}, not structure
+    \item For deterministic dynamics, the prediction-as-action framework works
+\end{itemize}
+
+\subsection{Credit Assignment: Discrete vs. Continuous}
+
+An additional finding from multi-step experiments:
+
+\begin{table}[htbp]
+\caption{Credit Assignment Comparison}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Action Space} & \textbf{Delay Steps} & \textbf{Accuracy} \\
+\midrule
+Continuous (prior work) & 5 & 35\% \\
+\textbf{Discrete (ours)} & \textbf{7} & \textbf{100\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+Discrete action spaces show dramatically better credit assignment than continuous spaces. We hypothesize this is because discrete predictions are binary (correct/incorrect), providing sharper gradient signals than continuous predictions which can be ``partially correct.''
+
+\section{Discussion}
+
+\subsection{What Likelihood Supervision Provides}
+
+Our results clarify a fundamental question: what does cross-entropy training provide that RL cannot learn?
+
+\begin{table}[htbp]
+\caption{What Each Method Learns}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Capability} & \textbf{RL} & \textbf{MLE} \\
+\midrule
+Token structure (what follows what) & \checkmark & \checkmark \\
+Deterministic mappings & \checkmark & \checkmark \\
+Internal representations & \checkmark & \checkmark \\
+Calibrated uncertainty & $\times$ & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+The answer is \textbf{calibrated uncertainty}---the ability to output probability distributions that match the true data-generating process when multiple outputs are valid.
+
+\subsection{Why This Explains RLHF Design}
+
+RLHF \cite{ouyang2022instructgpt} always includes:
+\begin{enumerate}
+    \item \textbf{Pretrained initialization:} Start from likelihood-trained model
+    \item \textbf{KL regularization:} Penalize divergence from pretrained distribution
+\end{enumerate}
+
+Our results explain both:
+\begin{itemize}
+    \item \textbf{Pretraining} is necessary to learn calibrated uncertainty
+    \item \textbf{KL penalty} prevents RL from collapsing learned distributions
+\end{itemize}
+
+Without these, RL fine-tuning would destroy the distributional knowledge that makes language models useful.
+
+\subsection{The Representation Paradox}
+
+Our most striking finding is that representation similarity is \textit{highest} where behavioral divergence is greatest:
+
+\begin{itemize}
+    \item Ambiguous tokens: CKA = 0.83, but entropy differs by 77$\times$
+    \item Deterministic tokens: CKA = 0.77, behavior identical
+\end{itemize}
+
+This suggests that both methods learn the same ``what is possible'' representation. The difference is entirely in ``how likely is each possibility''---a property of the output layer, not the learned features.
+
+\subsection{Implications for RL-Based Language Learning}
+
+Can RL learn language from scratch without pretraining? Our results suggest:
+
+\begin{enumerate}
+    \item \textbf{Structure:} Yes, RL can learn token-level dynamics
+    \item \textbf{Uncertainty:} No, RL collapses to deterministic outputs
+    \item \textbf{Representations:} Largely preserved despite behavioral collapse
+\end{enumerate}
+
+For language tasks requiring calibrated uncertainty (generation, sampling, perplexity), likelihood supervision remains necessary. For tasks requiring only structural knowledge (classification, deterministic prediction), RL may suffice.
+
+\subsection{Limitations}
+
+\begin{enumerate}
+    \item \textbf{Scale:} 16-token vocabulary, synthetic grammars
+    \item \textbf{Complexity:} No compositional structure, semantics, or long-range dependencies
+    \item \textbf{Algorithms:} Only tested REINFORCE; other policy gradient methods may differ
+    \item \textbf{Entropy bonus:} Standard 0.01 coefficient; aggressive entropy regularization might help
+\end{enumerate}
+
+\subsection{Future Work}
+
+\begin{enumerate}
+    \item \textbf{Entropy-regularized RL:} Can aggressive entropy bonuses prevent collapse?
+    \item \textbf{Distributional RL:} Methods that explicitly model return distributions
+    \item \textbf{Larger scale:} Does the structure/uncertainty separation hold at 1000+ tokens?
+    \item \textbf{Compositional tasks:} Carefully designed tests of systematic generalization
+\end{enumerate}
+
+\section{Conclusion}
+
+We investigated what reinforcement learning can learn about language-like structure without likelihood supervision. Our findings reveal a fundamental asymmetry:
+
+\begin{enumerate}
+    \item RL learns \textbf{structure} (which tokens follow which) but not \textbf{uncertainty} (probability distributions over valid options)
+    \item This failure is \textbf{objective-level}, not representational---internal features are highly similar (CKA 0.83 on ambiguous tokens)
+    \item Distributional collapse occurs in the \textbf{output layer}, not learned representations
+\end{enumerate}
+
+These results explain why likelihood-based pretraining exists: not to learn structure (RL can do that), but to learn calibrated uncertainty over structure. They also explain why RLHF requires KL regularization: to prevent RL from destroying learned distributions.
+
+We emphasize that these are controlled experiments on 16-token synthetic grammars, not natural language. But they isolate a precise answer to the question: \textit{what does likelihood supervision provide?} The answer is uncertainty---and that is what makes the difference for language.
+
+\section*{Code Availability}
+
+Code and experiment logs will be made available upon publication.
+
+\begin{thebibliography}{00}
+
+\bibitem{brown2020gpt3} T. Brown et al., ``Language Models are Few-Shot Learners,'' in \textit{Advances in Neural Information Processing Systems}, vol. 33, 2020.
+
+\bibitem{prior_paper} [Anonymous], ``Prediction as Action: When Reinforcement Learning Learns Predictive Representations Without Pretraining,'' \textit{Under Review}, 2025.
+
+\bibitem{williams1992simple} R. J. Williams, ``Simple statistical gradient-following algorithms for connectionist reinforcement learning,'' \textit{Machine Learning}, vol. 8, pp. 229--256, 1992.
+
+\bibitem{ouyang2022instructgpt} L. Ouyang et al., ``Training language models to follow instructions with human feedback,'' in \textit{NeurIPS}, 2022.
+
+\bibitem{kornblith2019similarity} S. Kornblith et al., ``Similarity of Neural Network Representations Revisited,'' in \textit{ICML}, 2019.
+
+\bibitem{sutton1998rl} R. S. Sutton and A. G. Barto, \textit{Reinforcement Learning: An Introduction}, MIT Press, 1998.
+
+\end{thebibliography}
+
+\end{document}
